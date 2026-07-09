@@ -1,0 +1,1 @@
+alter table public.label_reviews add column if not exists report_path text;

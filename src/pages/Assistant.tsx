@@ -74,8 +74,6 @@ export default function Assistant() {
       throw new Error("Please log in to use the assistant");
     }
 
-    // Derive the Functions base URL from the configured Supabase URL so this
-    // works for any project without hardcoding a project ref.
     const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/erp-assistant`, {
       method: "POST",

@@ -1,0 +1,2 @@
+ALTER TABLE public.rd_received_samples ADD COLUMN IF NOT EXISTS rd_version_id uuid REFERENCES public.rd_project_versions(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_rd_received_samples_version ON public.rd_received_samples(rd_version_id);

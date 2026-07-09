@@ -1,0 +1,1 @@
+ALTER TABLE public.label_reviews DROP COLUMN IF EXISTS gummy_base, DROP COLUMN IF EXISTS review_type;

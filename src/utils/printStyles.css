@@ -1,0 +1,167 @@
+/* Print-friendly styles for reports */
+@media print {
+  /* Hide navigation and interactive elements */
+  .no-print,
+  header,
+  nav,
+  .sidebar,
+  .print\\:hidden,
+  button,
+  [role="button"],
+  [data-sidebar],
+  [data-sidebar-trigger] {
+    display: none !important;
+  }
+
+  /* Reset page layout for printing */
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+    margin: 0;
+    padding: 1cm;
+  }
+
+  /* Ensure page breaks work correctly */
+  .page-break,
+  .print\\:page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  /* Avoid breaking inside important elements */
+  table,
+  figure,
+  img,
+  .print\\:break-inside-avoid {
+    page-break-inside: avoid;
+  }
+
+  /* Table styling for print */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th,
+  td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: left;
+  }
+
+  th {
+    background: #f0f0f0;
+    font-weight: 600;
+  }
+
+  /* Card/section styling */
+  .print\\:border {
+    border: 1px solid #ddd;
+    padding: 1em;
+    margin-bottom: 1em;
+  }
+
+  /* Typography adjustments */
+  h1 {
+    font-size: 20pt;
+    margin-bottom: 0.5em;
+  }
+
+  h2 {
+    font-size: 16pt;
+    margin-top: 0.8em;
+    margin-bottom: 0.4em;
+  }
+
+  h3 {
+    font-size: 14pt;
+    margin-top: 0.6em;
+    margin-bottom: 0.3em;
+  }
+
+  /* Links */
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #666;
+  }
+
+  /* Show URLs for external links */
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+  }
+
+  /* Don't show URLs for internal links */
+  a[href^="/"]:after,
+  a[href^="#"]:after {
+    content: "";
+  }
+
+  /* Chart and image handling */
+  canvas,
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Ensure proper spacing */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Badge and status indicators */
+  .badge,
+  [data-badge] {
+    border: 1px solid #333;
+    padding: 2px 6px;
+    display: inline-block;
+  }
+
+  /* Print header for reports */
+  .print-header {
+    display: block !important;
+    margin-bottom: 2em;
+    border-bottom: 2px solid #000;
+    padding-bottom: 1em;
+  }
+
+  .print-header h1 {
+    margin: 0;
+    font-size: 24pt;
+  }
+
+  .print-header .meta {
+    font-size: 10pt;
+    color: #666;
+    margin-top: 0.5em;
+  }
+
+  /* Page numbers */
+  @page {
+    margin: 2cm;
+    
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+    }
+  }
+}

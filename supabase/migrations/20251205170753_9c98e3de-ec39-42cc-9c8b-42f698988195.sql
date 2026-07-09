@@ -1,0 +1,1 @@
+ALTER TABLE order_line_items ALTER COLUMN batches_required TYPE NUMERIC(10,2);

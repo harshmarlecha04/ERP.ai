@@ -1,5 +1,226 @@
-* { box-sizing: border-box; margin: 0; }
-body { font-family: Inter, system-ui, sans-serif; background: #0f1115; color: #e7e9ee; }
-.shell { max-width: 640px; margin: 15vh auto; padding: 0 24px; }
-h1 { font-size: 2.2rem; margin-bottom: 4px; }
-.muted { color: #8a90a0; margin-top: 12px; line-height: 1.5; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Manufacturing ERP Design System - Professional and Data-Focused */
+
+@layer base {
+  :root {
+    /* Soft Pale Color Palette */
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    --primary: 214 84% 56%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 214 84% 50%;
+
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 215 25% 15%;
+
+    --muted: 210 15% 97%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 212 50% 85%;
+    --accent-foreground: 215 25% 15%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 20% 85%;
+    --input: 215 20% 85%;
+    --ring: 214 84% 56%;
+
+    /* Inventory specific colors */
+    --table-background: 210 17% 98%;
+    --table-row-even: 212 50% 95%;
+    --table-row-hover: 212 100% 95%;
+    --table-border: 215 20% 82%;
+    
+    /* Status colors for inventory */
+    --status-out-of-stock: 0 45% 95%;
+    --status-out-of-stock-text: 0 60% 45%;
+    --status-pending: 45 50% 95%;
+    --status-pending-text: 45 60% 40%;
+    --status-expiring: 25 50% 95%;
+    --status-expiring-text: 25 60% 40%;
+
+    /* Manufacturing specific colors */
+    --inventory: 142 76% 36%;
+    --production: 214 84% 56%;
+    --quality: 271 91% 65%;
+    --packaging: 43 96% 56%;
+    --maintenance: 17 88% 40%;
+
+    /* Chart colors */
+    --chart-1: 214 84% 56%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 43 96% 56%;
+    --chart-4: 271 91% 65%;
+    --chart-5: 17 88% 40%;
+
+    --radius: 0.375rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 214 84% 56%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 214 84% 50%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 214 84% 56%;
+
+    /* Table colors */
+    --table-background: 222.2 84% 6%;
+    --table-row-even: 217.2 32.6% 12%;
+    --table-row-hover: 217.2 32.6% 15%;
+    --table-border: 217.2 32.6% 20%;
+
+    /* Status colors */
+    --status-out-of-stock: 0 40% 15%;
+    --status-out-of-stock-text: 0 60% 65%;
+    --status-pending: 45 40% 15%;
+    --status-pending-text: 45 60% 65%;
+    --status-expiring: 25 40% 15%;
+    --status-expiring-text: 25 60% 65%;
+
+    /* Manufacturing colors */
+    --inventory: 142 76% 36%;
+    --production: 214 84% 56%;
+    --quality: 271 91% 65%;
+    --packaging: 43 96% 56%;
+    --maintenance: 17 88% 40%;
+
+    /* Chart colors */
+    --chart-1: 214 84% 56%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 43 96% 56%;
+    --chart-4: 271 91% 65%;
+    --chart-5: 17 88% 40%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Dashboard animations */
+@layer utilities {
+  .animate-in {
+    animation: animate-in 0.5s ease-out forwards;
+  }
+  
+  .fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+  
+  @keyframes animate-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+/* Print polish — hide chrome, expand content, ensure ink-friendly colors */
+@media print {
+  @page { margin: 12mm; }
+  html, body { background: #fff !important; }
+  body { color: #000 !important; }
+  /* Hide app shell */
+  [data-sidebar],
+  [data-sidebar="sidebar"],
+  header,
+  nav,
+  .no-print,
+  [data-no-print] {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .h-screen { height: auto !important; }
+  /* Prevent awkward breaks */
+  table, tr, td, th, .card, [class*="Card"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  a[href]::after { content: " (" attr(href) ")"; font-size: 0.8em; color: #555; }
+  a[href^="#"]::after, a[href^="javascript:"]::after { content: ""; }
+}

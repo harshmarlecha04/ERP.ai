@@ -1,0 +1,1 @@
+ALTER TABLE public.label_reviews ADD COLUMN IF NOT EXISTS gummy_weight_g numeric(3,1);

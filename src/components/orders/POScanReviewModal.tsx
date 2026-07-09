@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Sparkles, AlertTriangle, Trash2, Plus, RefreshCw, Check, UserCircle2, ChevronsUpDown } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -27,6 +29,8 @@ import { getSignedPdfUrl } from "@/utils/pdfStorage";
 import { cn } from "@/lib/utils";
 
 const BOTTLE_SIZES = [60, 70, 90, 120];
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface Props {
   isOpen: boolean;
@@ -78,6 +82,118 @@ function AiSuggestBadge({ score }: { score?: number }) {
     <Badge variant="outline" className="text-[9px] ml-1 border-primary/30 text-primary">
       AI · {Math.round(score * 100)}%
     </Badge>
+  );
+}
+
+function PdfCanvasPreview({ signedUrl }: { signedUrl: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pagesRef = useRef<HTMLDivElement | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [pageCount, setPageCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    let loadingTask: any = null;
+    const renderTasks: any[] = [];
+
+    const renderPdf = async () => {
+      setStatus("loading");
+      setPageCount(0);
+      if (pagesRef.current) pagesRef.current.innerHTML = "";
+
+      try {
+        loadingTask = pdfjsLib.getDocument({ url: signedUrl, withCredentials: false });
+        const pdf = await loadingTask.promise;
+        if (cancelled) return;
+
+        setPageCount(pdf.numPages);
+        const availableWidth = Math.max((containerRef.current?.clientWidth || 720) - 48, 320);
+
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          const page = await pdf.getPage(pageNumber);
+          if (cancelled) return;
+
+          const baseViewport = page.getViewport({ scale: 1 });
+          const scale = Math.min(2, availableWidth / baseViewport.width);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          const wrapper = document.createElement("div");
+          const context = canvas.getContext("2d");
+          const pixelRatio = window.devicePixelRatio || 1;
+
+          if (!context) throw new Error("PDF preview is unavailable in this browser.");
+
+          wrapper.className = "flex justify-center";
+          canvas.className = "rounded border bg-background shadow-sm";
+          canvas.width = Math.floor(viewport.width * pixelRatio);
+          canvas.height = Math.floor(viewport.height * pixelRatio);
+          canvas.style.width = `${Math.floor(viewport.width)}px`;
+          canvas.style.height = `${Math.floor(viewport.height)}px`;
+          context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+          wrapper.appendChild(canvas);
+          pagesRef.current?.appendChild(wrapper);
+
+          const renderTask = page.render({ canvasContext: context, viewport });
+          renderTasks.push(renderTask);
+          await renderTask.promise;
+        }
+
+        if (!cancelled) setStatus("ready");
+        await pdf.destroy();
+      } catch (error: any) {
+        if (!cancelled && error?.name !== "RenderingCancelledException") {
+          console.warn("PDF preview failed:", error?.message || error);
+          setStatus("error");
+        }
+      }
+    };
+
+    renderPdf();
+
+    return () => {
+      cancelled = true;
+      renderTasks.forEach((task) => task?.cancel?.());
+      loadingTask?.destroy?.();
+    };
+  }, [signedUrl]);
+
+  return (
+    <div ref={containerRef} className="relative h-full w-full overflow-auto bg-muted/40">
+      <div className="sticky top-2 z-10 flex justify-end px-2">
+        <a
+          href={signedUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs bg-background/95 border rounded px-2 py-1 hover:bg-background shadow"
+        >
+          Open in new tab
+        </a>
+      </div>
+
+      {status === "loading" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span className="text-sm">Loading PDF…</span>
+        </div>
+      )}
+
+      {status === "error" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+          <AlertTriangle className="h-8 w-8 text-amber-600" />
+          <p className="text-sm">PDF preview could not load here.</p>
+          <Button variant="outline" size="sm" asChild>
+            <a href={signedUrl} target="_blank" rel="noreferrer">Open PDF</a>
+          </Button>
+        </div>
+      )}
+
+      <div
+        ref={pagesRef}
+        className={cn("min-h-full space-y-4 p-4", status !== "ready" && "opacity-0")}
+        aria-label={pageCount ? `PDF preview, ${pageCount} page${pageCount === 1 ? "" : "s"}` : "PDF preview"}
+      />
+    </div>
   );
 }
 
@@ -236,7 +352,7 @@ export function POScanReviewModal({ isOpen, onClose, orderId, pdfPath, poNumber,
         description: msg.includes("429")
           ? "Rate limited — please try again in a minute."
           : msg.includes("402")
-          ? "AI credits exhausted. Check your Anthropic API account balance."
+          ? "AI credits exhausted. Check your Anthropic API billing."
           : msg,
         variant: "destructive",
       });
@@ -441,11 +557,7 @@ export function POScanReviewModal({ isOpen, onClose, orderId, pdfPath, poNumber,
           {/* PDF preview */}
           <div className="border rounded-lg overflow-hidden bg-muted min-h-[400px]">
             {signedUrl ? (
-              <iframe
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(signedUrl)}&embedded=true`}
-                className="w-full h-full"
-                title="PO PDF"
-              />
+              <PdfCanvasPreview signedUrl={signedUrl} />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 Loading PDF…

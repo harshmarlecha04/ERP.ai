@@ -1,0 +1,1 @@
+ALTER TABLE public.employee_schedule ALTER COLUMN employee_id DROP NOT NULL;

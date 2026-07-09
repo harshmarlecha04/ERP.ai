@@ -1,0 +1,15 @@
+project_id = "eykvfnksllpekyaltwsm"
+
+[functions]
+  [functions.ai-operational-insights]
+    verify_jwt = true
+  [functions.ai-scan-po]
+    verify_jwt = true
+  [functions.erp-assistant]
+    verify_jwt = true
+  [functions.send-inventory-alerts]
+    verify_jwt = true
+  [functions.send-order-email]
+    verify_jwt = false
+  [functions.parse-label-ocr]
+    verify_jwt = true

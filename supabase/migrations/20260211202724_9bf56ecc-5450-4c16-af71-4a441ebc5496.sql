@@ -1,0 +1,1 @@
+ALTER TABLE production_schedule_items ADD COLUMN notes text;

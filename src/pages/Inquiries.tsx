@@ -26,12 +26,7 @@ export default function Inquiries() {
     search: searchQuery,
   });
 
-  // Use the current deployment origin so the link works on whatever domain
-  // the app is hosted on (no hardcoded host).
-  const inquiryUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/submit-inquiry`
-      : "/submit-inquiry";
+  const inquiryUrl = typeof window !== "undefined" ? `${window.location.origin}/submit-inquiry` : "/submit-inquiry";
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inquiryUrl);

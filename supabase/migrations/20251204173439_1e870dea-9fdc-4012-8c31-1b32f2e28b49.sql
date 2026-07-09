@@ -1,0 +1,1 @@
+ALTER TABLE order_line_items ADD COLUMN batches_required integer DEFAULT NULL;

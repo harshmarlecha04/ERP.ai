@@ -1,0 +1,20 @@
+CREATE TABLE public.rd_color_options (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.rd_color_options ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can view color options"
+ON public.rd_color_options
+FOR SELECT
+TO authenticated
+USING (true);
+
+CREATE POLICY "Authenticated users can add color options"
+ON public.rd_color_options
+FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() IS NOT NULL AND created_by = auth.uid());
