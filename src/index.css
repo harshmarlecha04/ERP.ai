@@ -1,0 +1,5 @@
+* { box-sizing: border-box; margin: 0; }
+body { font-family: Inter, system-ui, sans-serif; background: #0f1115; color: #e7e9ee; }
+.shell { max-width: 640px; margin: 15vh auto; padding: 0 24px; }
+h1 { font-size: 2.2rem; margin-bottom: 4px; }
+.muted { color: #8a90a0; margin-top: 12px; line-height: 1.5; }
