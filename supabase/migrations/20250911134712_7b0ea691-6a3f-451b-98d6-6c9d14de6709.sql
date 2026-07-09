@@ -2,8 +2,8 @@
 -- Clean up and implement secure access patterns
 
 -- Drop existing policies if they exist to avoid conflicts
-DROP POLICY IF EXISTS "Only admins can view supplier access audit" ON public.supplier_access_audit;
-DROP POLICY IF EXISTS "System can insert supplier access audit" ON public.supplier_access_audit;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view supplier access audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "System can insert supplier access audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create audit table for supplier access logging (if not exists)
 CREATE TABLE IF NOT EXISTS public.supplier_access_audit (
@@ -20,16 +20,19 @@ CREATE TABLE IF NOT EXISTS public.supplier_access_audit (
 );
 
 -- Enable RLS on the audit table
-ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create new policies
-CREATE POLICY "Admins can view supplier audit logs" ON public.supplier_access_audit
-FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role));
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view supplier audit logs" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can view supplier audit logs" ON public.supplier_access_audit
+FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All can insert supplier audit logs" ON public.supplier_access_audit
-FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All can insert supplier audit logs" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All can insert supplier audit logs" ON public.supplier_access_audit
+FOR INSERT WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure function to get suppliers with enhanced access control
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_suppliers' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_suppliers(_user_id uuid)
 RETURNS TABLE(
     id uuid,
@@ -89,20 +92,22 @@ END;
 $$;
 
 -- Add additional RLS policy for direct table access protection
-CREATE POLICY "Block direct supplier contact access" ON public.suppliers
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Block direct supplier contact access" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Block direct supplier contact access" ON public.suppliers
 FOR SELECT USING (
     -- Block all direct access - force use of secure function
     false
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Update existing policies to be more restrictive
-DROP POLICY IF EXISTS "Restricted supplier access for essential roles only" ON public.suppliers;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Restricted supplier access for essential roles only" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Essential roles supplier access via secure function" ON public.suppliers
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Essential roles supplier access via secure function" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Essential roles supplier access via secure function" ON public.suppliers
 FOR SELECT USING (
     has_role(auth.uid(), 'admin'::app_role) OR 
     has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Update table documentation
 COMMENT ON TABLE public.suppliers IS 'SECURITY-ENHANCED: Supplier contact information (emails, phone numbers) protected by multi-layer security. Access restricted to essential personnel only with mandatory audit logging to prevent data theft.';

@@ -2,51 +2,59 @@
 -- Replace overly permissive RLS policies with secure, role-based access control (CORRECTED)
 
 -- Drop the insecure policies that allow any authenticated user to access employee data
-DROP POLICY IF EXISTS "All authenticated users can view employee data" ON public.employee_sensitive_data;
-DROP POLICY IF EXISTS "All authenticated users can manage employee data" ON public.employee_sensitive_data;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can view employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can manage employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure RLS policies for employee sensitive data access
 
 -- 1. VIEW policies - Who can see employee sensitive data
-CREATE POLICY "HR managers can view all employee data" ON public.employee_sensitive_data
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can view all employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "HR managers can view all employee data" ON public.employee_sensitive_data
 FOR SELECT USING (
     has_role(auth.uid(), 'admin'::app_role) OR 
     has_role(auth.uid(), 'hr_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Employees can view their own data" ON public.employee_sensitive_data
-FOR SELECT USING (id = auth.uid());
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Employees can view their own data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Employees can view their own data" ON public.employee_sensitive_data
+FOR SELECT USING (id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Managers can view their direct reports data" ON public.employee_sensitive_data
-FOR SELECT USING (manager_id = auth.uid());
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Managers can view their direct reports data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Managers can view their direct reports data" ON public.employee_sensitive_data
+FOR SELECT USING (manager_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. INSERT policies - Who can create employee records
-CREATE POLICY "Only HR managers can create employee records" ON public.employee_sensitive_data
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only HR managers can create employee records" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only HR managers can create employee records" ON public.employee_sensitive_data
 FOR INSERT WITH CHECK (
     has_role(auth.uid(), 'admin'::app_role) OR 
     has_role(auth.uid(), 'hr_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. UPDATE policies - Who can modify employee data
-CREATE POLICY "HR managers can update all employee data" ON public.employee_sensitive_data
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can update all employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "HR managers can update all employee data" ON public.employee_sensitive_data
 FOR UPDATE USING (
     has_role(auth.uid(), 'admin'::app_role) OR 
     has_role(auth.uid(), 'hr_manager'::app_role)
 ) WITH CHECK (
     has_role(auth.uid(), 'admin'::app_role) OR 
     has_role(auth.uid(), 'hr_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Employees can only update their emergency contact information, not sensitive fields
-CREATE POLICY "Employees can update emergency contact only" ON public.employee_sensitive_data
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Employees can update emergency contact only" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Employees can update emergency contact only" ON public.employee_sensitive_data
 FOR UPDATE USING (id = auth.uid()) 
-WITH CHECK (id = auth.uid());
+WITH CHECK (id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 4. DELETE policies - Who can remove employee records
-CREATE POLICY "Only admins can delete employee records" ON public.employee_sensitive_data
-FOR DELETE USING (has_role(auth.uid(), 'admin'::app_role));
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete employee records" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can delete employee records" ON public.employee_sensitive_data
+FOR DELETE USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure function for employee self-service updates (limited fields only)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_employee_emergency_contact' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_employee_emergency_contact(
     _employee_id uuid,
     _emergency_contact_name text,
@@ -93,6 +101,7 @@ END;
 $$;
 
 -- Create audit function for employee data access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_employee_data_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_employee_data_access(
     _employee_id uuid,
     _accessed_by uuid,
@@ -129,6 +138,7 @@ END;
 $$;
 
 -- Create a secure function for HR managers to get employee data with audit logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_employee_sensitive_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_employee_sensitive_data(_employee_id uuid DEFAULT NULL::uuid)
 RETURNS TABLE(
     id uuid,

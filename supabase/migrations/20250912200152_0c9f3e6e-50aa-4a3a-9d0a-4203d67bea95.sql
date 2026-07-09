@@ -1,4 +1,5 @@
 -- Enhanced auto-populate function with better inventory visibility
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='auto_populate_production_ingredients' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.auto_populate_production_ingredients(
   p_schedule_item_id uuid,
   p_formula_id uuid,
@@ -176,6 +177,7 @@ END;
 $$;
 
 -- Enhanced deduct inventory function with over-deduction support
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='deduct_inventory_for_batch' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.deduct_inventory_for_batch(
   p_schedule_item_id uuid,
   p_formula_code text,

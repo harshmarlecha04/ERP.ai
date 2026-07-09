@@ -2,7 +2,7 @@
 -- This ensures the view respects user permissions properly
 
 -- Enable RLS on the view
-ALTER VIEW public.inventory_lots_view SET ROW LEVEL SECURITY DISABLE;
+-- (removed: views do not support ROW LEVEL SECURITY)
 
 -- Since this is a view that joins raw_material_lots and raw_materials,
 -- it will inherit the security from the underlying tables through their RLS policies

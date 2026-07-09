@@ -20,28 +20,32 @@ CREATE INDEX IF NOT EXISTS idx_office_supply_purchases_item_id ON public.office_
 CREATE INDEX IF NOT EXISTS idx_office_supply_purchases_purchase_date ON public.office_supply_purchases(purchase_date);
 
 -- Enable RLS
-ALTER TABLE public.office_supply_purchases ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.office_supply_purchases ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS policies for office_supply_purchases
-CREATE POLICY "All authenticated users can view purchases"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can view purchases" ON public.office_supply_purchases; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All authenticated users can view purchases"
   ON public.office_supply_purchases
   FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can create purchases"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can create purchases" ON public.office_supply_purchases; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can create purchases"
   ON public.office_supply_purchases
   FOR INSERT
-  WITH CHECK (auth.uid() = created_by);
+  WITH CHECK (auth.uid() = created_by); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can update purchases"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update purchases" ON public.office_supply_purchases; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can update purchases"
   ON public.office_supply_purchases
   FOR UPDATE
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can delete purchases"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can delete purchases" ON public.office_supply_purchases; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can delete purchases"
   ON public.office_supply_purchases
   FOR DELETE
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Migrate existing office_supplies data to purchases table
 -- For each existing supply with cost data, create a first purchase record
@@ -81,6 +85,7 @@ ALTER TABLE public.office_supplies
   DROP COLUMN IF EXISTS last_order_date;
 
 -- Add trigger to update updated_at timestamp
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_office_supply_purchases_updated_at' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION update_office_supply_purchases_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -89,6 +94,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_office_supply_purchases_updated_at ON public.office_supply_purchases;
 CREATE TRIGGER update_office_supply_purchases_updated_at
   BEFORE UPDATE ON public.office_supply_purchases
   FOR EACH ROW

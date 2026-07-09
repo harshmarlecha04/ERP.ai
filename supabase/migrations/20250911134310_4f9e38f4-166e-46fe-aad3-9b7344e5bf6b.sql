@@ -45,12 +45,14 @@ CREATE TABLE IF NOT EXISTS public.supplier_access_audit (
 );
 
 -- Enable RLS on the audit table
-ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Only admins can view supplier access logs
-CREATE POLICY "Only admins can view supplier access audit" ON public.supplier_access_audit
-FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role));
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view supplier access audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view supplier access audit" ON public.supplier_access_audit
+FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Authenticated users can insert audit logs (for system logging)
-CREATE POLICY "System can insert supplier access audit" ON public.supplier_access_audit
-FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "System can insert supplier access audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "System can insert supplier access audit" ON public.supplier_access_audit
+FOR INSERT WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

@@ -1,7 +1,8 @@
 -- Fix formula updates policy to never call validate_formula_access_secure during soft deletes
-DROP POLICY IF EXISTS "Secure formula updates" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula updates" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Secure formula updates"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula updates" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure formula updates"
 ON public.formulas
 FOR UPDATE
 USING (
@@ -18,4 +19,4 @@ WITH CHECK (
     OR
     ((security_level IN ('confidential'::text, 'trade_secret'::text)) AND validate_formula_access_secure(auth.uid(), id, 'edit'::text))
   ))
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

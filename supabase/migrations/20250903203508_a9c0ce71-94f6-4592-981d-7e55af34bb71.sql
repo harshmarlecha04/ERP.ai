@@ -1,34 +1,38 @@
 -- Create comprehensive financial data access controls using valid app_role enum values
 
 -- 1. First, create specific policies for financial vs operational data access
-DROP POLICY IF EXISTS "All authenticated users can manage purchase orders" ON public.purchase_orders;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can manage purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Allow all authenticated users to view operational data (hide financial fields)
-CREATE POLICY "All users can view operational purchase order data"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view operational purchase order data" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view operational purchase order data"
 ON public.purchase_orders
 FOR SELECT
 TO authenticated
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Allow all authenticated users to insert/update/delete purchase orders
-CREATE POLICY "All users can manage purchase orders"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can manage purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can manage purchase orders"
 ON public.purchase_orders
 FOR INSERT
 TO authenticated
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can update purchase orders"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update purchase orders"
 ON public.purchase_orders
 FOR UPDATE
 TO authenticated
 USING (auth.uid() IS NOT NULL)
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can delete purchase orders"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete purchase orders"
 ON public.purchase_orders
 FOR DELETE
 TO authenticated
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. Create a view that excludes financial data for non-authorized users
 CREATE OR REPLACE VIEW public.purchase_orders_operational AS
@@ -72,6 +76,7 @@ FROM public.purchase_orders;
 ALTER VIEW public.purchase_orders_operational SET (security_barrier = true);
 
 -- 3. Create a function to check financial access permissions
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_financial_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_financial_data(_user_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -88,6 +93,7 @@ AS $$
 $$;
 
 -- 4. Create a secure function to get purchase order stats with financial restrictions
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_purchase_order_stats_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_purchase_order_stats_secure()
 RETURNS jsonb
 LANGUAGE plpgsql

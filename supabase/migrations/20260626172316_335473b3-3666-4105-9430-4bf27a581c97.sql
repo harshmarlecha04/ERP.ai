@@ -1,6 +1,6 @@
 
 -- 1. Pouch inventory
-CREATE TABLE public.pouch_inventory (
+CREATE TABLE IF NOT EXISTS public.pouch_inventory (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   quantity_on_hand integer NOT NULL DEFAULT 0,
@@ -12,19 +12,22 @@ CREATE TABLE public.pouch_inventory (
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.pouch_inventory TO authenticated;
 GRANT ALL ON public.pouch_inventory TO service_role;
+DO $rls$ BEGIN ALTER TABLE public.pouch_inventory ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.pouch_inventory ENABLE ROW LEVEL SECURITY;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can view pouch inventory" ON public.pouch_inventory; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can view pouch inventory"
+  ON public.pouch_inventory FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can manage pouch inventory" ON public.pouch_inventory; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can manage pouch inventory"
+  ON public.pouch_inventory FOR ALL TO authenticated USING (true) WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated can view pouch inventory"
-  ON public.pouch_inventory FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can manage pouch inventory"
-  ON public.pouch_inventory FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_updated_at_column' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
+DROP TRIGGER IF EXISTS update_pouch_inventory_updated_at ON public.pouch_inventory;
 CREATE TRIGGER update_pouch_inventory_updated_at
   BEFORE UPDATE ON public.pouch_inventory
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

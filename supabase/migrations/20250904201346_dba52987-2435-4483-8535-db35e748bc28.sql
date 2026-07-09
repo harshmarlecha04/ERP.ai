@@ -20,24 +20,27 @@ CREATE TABLE IF NOT EXISTS public.hr_data_access_requests (
 );
 
 -- Enable RLS on HR data access requests
-ALTER TABLE public.hr_data_access_requests ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.hr_data_access_requests ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create policies for HR data access requests
-CREATE POLICY "HR managers can create access requests" ON public.hr_data_access_requests
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can create access requests" ON public.hr_data_access_requests; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "HR managers can create access requests" ON public.hr_data_access_requests
     FOR INSERT WITH CHECK (
         has_role(auth.uid(), 'hr_manager'::app_role) AND 
         requester_id = auth.uid()
-    );
+    ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "HR managers can view their own requests" ON public.hr_data_access_requests
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can view their own requests" ON public.hr_data_access_requests; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "HR managers can view their own requests" ON public.hr_data_access_requests
     FOR SELECT USING (
         requester_id = auth.uid() OR 
         has_role(auth.uid(), 'admin'::app_role)
-    );
+    ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can approve/deny requests" ON public.hr_data_access_requests
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can approve/deny requests" ON public.hr_data_access_requests; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can approve/deny requests" ON public.hr_data_access_requests
     FOR UPDATE USING (has_role(auth.uid(), 'admin'::app_role))
-    WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+    WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create table for tracking approved HR sessions
 CREATE TABLE IF NOT EXISTS public.hr_sensitive_data_sessions (
@@ -56,15 +59,17 @@ CREATE TABLE IF NOT EXISTS public.hr_sensitive_data_sessions (
 );
 
 -- Enable RLS on HR sessions
-ALTER TABLE public.hr_sensitive_data_sessions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.hr_sensitive_data_sessions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create policies for HR sessions
-CREATE POLICY "Users can view their own HR sessions" ON public.hr_sensitive_data_sessions
-    FOR SELECT USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin'::app_role));
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own HR sessions" ON public.hr_sensitive_data_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own HR sessions" ON public.hr_sensitive_data_sessions
+    FOR SELECT USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can manage HR sessions" ON public.hr_sensitive_data_sessions
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can manage HR sessions" ON public.hr_sensitive_data_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can manage HR sessions" ON public.hr_sensitive_data_sessions
     FOR ALL USING (has_role(auth.uid(), 'admin'::app_role))
-    WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+    WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create audit table for sensitive data access
 CREATE TABLE IF NOT EXISTS public.employee_sensitive_data_audit (
@@ -82,16 +87,19 @@ CREATE TABLE IF NOT EXISTS public.employee_sensitive_data_audit (
 );
 
 -- Enable RLS on audit table
-ALTER TABLE public.employee_sensitive_data_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.employee_sensitive_data_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create policies for audit table
-CREATE POLICY "All authenticated users can insert audit logs" ON public.employee_sensitive_data_audit
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can insert audit logs" ON public.employee_sensitive_data_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All authenticated users can insert audit logs" ON public.employee_sensitive_data_audit
+    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can view audit logs" ON public.employee_sensitive_data_audit
-    FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role));
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view audit logs" ON public.employee_sensitive_data_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view audit logs" ON public.employee_sensitive_data_audit
+    FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure function to get employee sensitive data with approval workflow
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_employee_sensitive_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_employee_sensitive_data(_employee_id TEXT DEFAULT NULL)
 RETURNS TABLE(
     id UUID,
@@ -218,6 +226,7 @@ END;
 $$;
 
 -- Create secure function to update employee sensitive data with approval workflow  
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_employee_data_hr_only' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_employee_data_hr_only(
     _employee_id TEXT,
     _employee_data JSONB
@@ -331,13 +340,14 @@ END;
 $$;
 
 -- Update RLS policies on employee_sensitive_data table to require approval workflow
-DROP POLICY IF EXISTS "HR managers can view all employee data" ON public.employee_sensitive_data;
-DROP POLICY IF EXISTS "HR managers can update all employee data" ON public.employee_sensitive_data;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can view all employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can update all employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create new restrictive policies that require using the secure functions
-CREATE POLICY "Only secure function access to sensitive data" ON public.employee_sensitive_data
-    FOR ALL USING (false) WITH CHECK (false);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only secure function access to sensitive data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only secure function access to sensitive data" ON public.employee_sensitive_data
+    FOR ALL USING (false) WITH CHECK (false); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Grant execute permissions on the secure functions
-GRANT EXECUTE ON FUNCTION public.get_employee_sensitive_data TO authenticated;
-GRANT EXECUTE ON FUNCTION public.update_employee_data_hr_only TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_employee_sensitive_data(text) TO authenticated;
+DO $gr$ BEGIN GRANT EXECUTE ON FUNCTION public.update_employee_data_hr_only TO authenticated; EXCEPTION WHEN ambiguous_function OR undefined_function THEN NULL; END $gr$;

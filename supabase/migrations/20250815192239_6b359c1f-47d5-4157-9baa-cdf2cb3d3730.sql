@@ -1,4 +1,5 @@
 -- Create atomic completion function for production schedules
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='complete_schedule' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION complete_schedule(
   p_schedule_id uuid,
   p_user_id uuid
@@ -181,16 +182,18 @@ CREATE TABLE IF NOT EXISTS batch_records (
 );
 
 -- Enable RLS on batch_records
-ALTER TABLE batch_records ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE batch_records ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create RLS policies for batch_records
-CREATE POLICY "Only admins and production managers can manage batch records"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins and production managers can manage batch records" ON batch_records; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins and production managers can manage batch records"
 ON batch_records
 FOR ALL
 USING (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'production_manager'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'production_manager'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'production_manager'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create trigger for updated_at
+DROP TRIGGER IF EXISTS update_batch_records_updated_at ON batch_records;
 CREATE TRIGGER update_batch_records_updated_at
   BEFORE UPDATE ON batch_records
   FOR EACH ROW

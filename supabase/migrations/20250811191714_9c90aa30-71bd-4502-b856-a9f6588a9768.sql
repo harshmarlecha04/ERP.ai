@@ -2,7 +2,7 @@
 DROP VIEW IF EXISTS public.inventory_lots_view;
 
 -- Recreate the view without SECURITY DEFINER
-CREATE VIEW public.inventory_lots_view AS
+CREATE OR REPLACE VIEW public.inventory_lots_view AS
 SELECT 
   rml.id,
   rml.raw_material_id as ingredient_id,

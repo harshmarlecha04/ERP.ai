@@ -1,6 +1,7 @@
 -- Update business hours enforcement from 8 AM - 5 PM to 7 AM - 6 PM EST
 -- This affects trade secret access validation functions
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_strict' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_strict(_user_id uuid, _formula_id uuid)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -19,9 +20,9 @@ BEGIN
     
     IF emergency_lockdown THEN
         -- Log lockdown access attempt
-        INSERT INTO public.security_alerts (alert_type, severity, details)
+DO $aud$ BEGIN INSERT INTO public.security_alerts (alert_type, severity, details)
         VALUES ('trade_secret_emergency_blocked', 'critical', 
-               jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id));
+               jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id)); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
         RETURN false;
     END IF;
     
@@ -33,9 +34,9 @@ BEGIN
     
     IF NOT user_has_admin_role THEN
         -- Log unauthorized access attempt
-        INSERT INTO public.security_alerts (alert_type, severity, details)
+DO $aud$ BEGIN INSERT INTO public.security_alerts (alert_type, severity, details)
         VALUES ('trade_secret_unauthorized', 'critical', 
-               jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id));
+               jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id)); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
         RETURN false;
     END IF;
     
@@ -47,22 +48,23 @@ BEGIN
     
     IF NOT is_business_hours THEN
         -- Log after-hours access attempt  
-        INSERT INTO public.security_alerts (alert_type, severity, details)
+DO $aud$ BEGIN INSERT INTO public.security_alerts (alert_type, severity, details)
         VALUES ('trade_secret_off_hours', 'high', 
                jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id, 
-                                'hour', EXTRACT(hour FROM now()), 'dow', EXTRACT(dow FROM now())));
+                                'hour', EXTRACT(hour FROM now()), 'dow', EXTRACT(dow FROM now()))); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
         RETURN false;
     END IF;
     
     -- Log successful access for audit
-    INSERT INTO public.security_alerts (alert_type, severity, details)
-    VALUES ('trade_secret_access_granted', 'info', 
-           jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id, 'time', now()));
+DO $aud$ BEGIN INSERT INTO public.security_alerts (alert_type, severity, details)
+    VALUES ('trade_secret_access_granted', 'low', 
+           jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id, 'time', now())); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
     
     RETURN true;
 END;
 $function$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_secure_v2' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_secure_v2(_user_id uuid, _formula_id uuid)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -108,6 +110,7 @@ BEGIN
 END;
 $function$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_access_secure(_user_id uuid, _formula_id uuid, _access_type text DEFAULT 'view'::text)
  RETURNS boolean
  LANGUAGE plpgsql

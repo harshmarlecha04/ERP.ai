@@ -10,10 +10,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_raw_materials_code_unique_ci
 ON raw_materials (code_ci);
 
 -- Rename columns to match schema
-ALTER TABLE raw_materials RENAME COLUMN unit_of_measure TO uom;
-ALTER TABLE raw_material_lots RENAME COLUMN expiry_date TO expires_on;
+DO $rn$ BEGIN ALTER TABLE raw_materials RENAME COLUMN unit_of_measure TO uom; EXCEPTION WHEN undefined_column OR duplicate_column OR undefined_table THEN NULL; END $rn$;
+DO $rn$ BEGIN ALTER TABLE raw_material_lots RENAME COLUMN expiry_date TO expires_on; EXCEPTION WHEN undefined_column OR duplicate_column OR undefined_table THEN NULL; END $rn$;
 
 -- Create atomic upsert function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='upsert_raw_material_with_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.upsert_raw_material_with_lots(p_material jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql

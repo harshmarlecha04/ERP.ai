@@ -1,2 +1,2 @@
 -- Temporarily disable RLS on formulas table to bypass the access issue
-ALTER TABLE public.formulas DISABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.formulas DISABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;

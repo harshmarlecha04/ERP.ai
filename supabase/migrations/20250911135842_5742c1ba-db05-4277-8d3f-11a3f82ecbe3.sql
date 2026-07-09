@@ -4,6 +4,7 @@
 DROP FUNCTION IF EXISTS public.get_accessible_formulas(uuid);
 
 -- 1. Create enhanced audit logging for formula access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_formula_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_formula_access_enhanced(
     _user_id uuid, 
     _formula_id uuid, 
@@ -64,6 +65,7 @@ END;
 $$;
 
 -- 2. Enhanced trade secret validation with session control
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(
     _user_id uuid, 
     _formula_id uuid
@@ -149,6 +151,7 @@ END;
 $$;
 
 -- 3. Create the secure formula access function with data redaction
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid)
 RETURNS TABLE(
     id uuid,
@@ -265,8 +268,9 @@ END;
 $$;
 
 -- 4. Enhanced RLS policy for formulas with maximum security
-DROP POLICY IF EXISTS "Maximum security formula access control" ON public.formulas;
-CREATE POLICY "Maximum security formula access control"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Maximum security formula access control" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Maximum security formula access control" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Maximum security formula access control"
 ON public.formulas
 FOR SELECT
 USING (
@@ -288,9 +292,10 @@ USING (
         (security_level = 'trade_secret' AND 
          validate_trade_secret_access_enhanced(auth.uid(), id))
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 5. Create emergency lockdown function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_formula_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_formula_lockdown()
 RETURNS void
 LANGUAGE plpgsql
@@ -326,6 +331,7 @@ END;
 $$;
 
 -- 6. Create function to disable emergency lockdown
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='disable_formula_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.disable_formula_lockdown()
 RETURNS void
 LANGUAGE plpgsql
@@ -348,7 +354,7 @@ BEGIN
     INSERT INTO public.security_alerts (alert_type, severity, details)
     VALUES (
         'emergency_formula_lockdown_disabled',
-        'info',
+        'low',
         jsonb_build_object(
             'disabled_by', auth.uid(),
             'timestamp', now(),
@@ -364,10 +370,10 @@ COMMENT ON FUNCTION public.validate_trade_secret_access_enhanced(uuid, uuid) IS 
 COMMENT ON FUNCTION public.log_formula_access_enhanced(uuid, uuid, text, jsonb) IS 'SECURITY-CRITICAL: Enhanced audit trail for all formula access attempts with automatic threat detection.';
 
 -- Log successful security enhancement deployment
-INSERT INTO public.security_alerts (alert_type, severity, details)
+DO $aud$ BEGIN INSERT INTO public.security_alerts (alert_type, severity, details)
 VALUES (
     'anti_espionage_security_deployed',
-    'info',
+    'low',
     jsonb_build_object(
         'deployed_at', now(),
         'security_level', 'maximum',
@@ -382,4 +388,4 @@ VALUES (
         ),
         'protection_against', 'Industrial espionage and unauthorized data access'
     )
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

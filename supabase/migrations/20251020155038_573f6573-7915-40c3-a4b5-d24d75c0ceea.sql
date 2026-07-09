@@ -26,31 +26,36 @@ CREATE INDEX IF NOT EXISTS idx_order_shipments_order_id ON order_shipments(order
 CREATE INDEX IF NOT EXISTS idx_order_shipments_date ON order_shipments(shipment_date);
 
 -- Enable RLS
-ALTER TABLE order_shipments ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE order_shipments ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS Policies for order_shipments
-CREATE POLICY "Authenticated users can view shipments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view shipments" ON order_shipments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view shipments"
   ON order_shipments FOR SELECT
   TO authenticated
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can create shipments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can create shipments" ON order_shipments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can create shipments"
   ON order_shipments FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can update shipments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update shipments" ON order_shipments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can update shipments"
   ON order_shipments FOR UPDATE
   TO authenticated
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can delete shipments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can delete shipments" ON order_shipments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can delete shipments"
   ON order_shipments FOR DELETE
   TO authenticated
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Function to update bottles_shipped and order status
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_order_fulfillment' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION update_order_fulfillment()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -101,6 +106,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger on INSERT/UPDATE/DELETE of shipments
+DROP TRIGGER IF EXISTS trigger_update_order_fulfillment ON order_shipments;
 DROP TRIGGER IF EXISTS trigger_update_order_fulfillment ON order_shipments;
 CREATE TRIGGER trigger_update_order_fulfillment
   AFTER INSERT OR UPDATE OR DELETE ON order_shipments

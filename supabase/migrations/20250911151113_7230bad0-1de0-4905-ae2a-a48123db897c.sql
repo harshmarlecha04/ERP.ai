@@ -2,6 +2,7 @@
 -- The RLS policy is already correct
 
 -- Update validate_trade_secret_access_enhanced to allow admin unrestricted access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -107,6 +108,7 @@ END;
 $$;
 
 -- Update get_accessible_formulas to give admins unrestricted access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid)
 RETURNS TABLE(id uuid, code text, name text, default_batch_size_kg numeric, recipe_json jsonb, active_ingredients_json jsonb, security_level text, classification_level text, version text, yield_uom text, notes text, product_code_line text, procedure_text text, status text, created_at timestamp with time zone, updated_at timestamp with time zone, last_accessed_at timestamp with time zone, access_count integer, requires_approval boolean, is_deleted boolean, average_piece_weight numeric, total_pieces integer, formula_code text)
 LANGUAGE plpgsql

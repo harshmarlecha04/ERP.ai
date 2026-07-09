@@ -1,5 +1,5 @@
 -- Create purchase_order_items table for multiple ingredients per PO
-CREATE TABLE public.purchase_order_items (
+CREATE TABLE IF NOT EXISTS public.purchase_order_items (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   purchase_order_id UUID NOT NULL,
   ingredient_id UUID,
@@ -13,29 +13,33 @@ CREATE TABLE public.purchase_order_items (
 );
 
 -- Enable RLS on purchase_order_items
-ALTER TABLE public.purchase_order_items ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.purchase_order_items ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create policies for purchase_order_items
-CREATE POLICY "All users can view purchase order items" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view purchase order items" ON public.purchase_order_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view purchase order items" 
 ON public.purchase_order_items 
 FOR SELECT 
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can manage purchase order items" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can manage purchase order items" ON public.purchase_order_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can manage purchase order items" 
 ON public.purchase_order_items 
 FOR INSERT 
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can update purchase order items" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update purchase order items" ON public.purchase_order_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update purchase order items" 
 ON public.purchase_order_items 
 FOR UPDATE 
 USING (auth.uid() IS NOT NULL)
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can delete purchase order items" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete purchase order items" ON public.purchase_order_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete purchase order items" 
 ON public.purchase_order_items 
 FOR DELETE 
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Add foreign key constraint (optional, for data integrity)
 -- ALTER TABLE public.purchase_order_items ADD CONSTRAINT fk_purchase_order_items_po 
@@ -45,6 +49,7 @@ USING (auth.uid() IS NOT NULL);
 -- We'll use the items table as the source of truth for ingredients
 
 -- Create function to get purchase orders with their items
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_purchase_orders_with_items_and_financial_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_purchase_orders_with_items_and_financial_access()
 RETURNS TABLE(
   id UUID,
@@ -120,6 +125,7 @@ END;
 $$;
 
 -- Create function to get purchase order stats with multi-ingredient support
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_purchase_order_stats_with_items_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_purchase_order_stats_with_items_secure()
 RETURNS JSONB
 LANGUAGE plpgsql

@@ -1,4 +1,5 @@
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='gen_customer_signup_code' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.gen_customer_signup_code()
 RETURNS text
 LANGUAGE plpgsql
@@ -30,11 +31,11 @@ ALTER TABLE public.customers
   ADD COLUMN IF NOT EXISTS signup_short_code text;
 
 -- Backfill: bypass user triggers (audit logger requires auth.uid() which is null in migration context)
-SET LOCAL session_replication_role = 'replica';
+DO $srr$ BEGIN EXECUTE 'SET LOCAL session_replication_role = replica'; EXCEPTION WHEN insufficient_privilege THEN NULL; END $srr$;
 UPDATE public.customers
 SET signup_short_code = public.gen_customer_signup_code()
 WHERE signup_short_code IS NULL;
-SET LOCAL session_replication_role = 'origin';
+DO $srr$ BEGIN EXECUTE 'SET LOCAL session_replication_role = origin'; EXCEPTION WHEN insufficient_privilege THEN NULL; END $srr$;
 
 ALTER TABLE public.customers
   ALTER COLUMN signup_short_code SET NOT NULL;
@@ -47,6 +48,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 CREATE INDEX IF NOT EXISTS idx_customers_signup_short_code
   ON public.customers(signup_short_code);
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='set_customer_signup_code' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.set_customer_signup_code()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -61,10 +63,12 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_customer_signup_code ON public.customers;
+DROP TRIGGER IF EXISTS trg_customer_signup_code ON public.customers;
 CREATE TRIGGER trg_customer_signup_code
   BEFORE INSERT ON public.customers
   FOR EACH ROW EXECUTE FUNCTION public.set_customer_signup_code();
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='claim_customer_signup' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.claim_customer_signup(_short_code text)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public

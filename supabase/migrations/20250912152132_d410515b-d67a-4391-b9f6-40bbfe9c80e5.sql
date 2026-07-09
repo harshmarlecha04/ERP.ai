@@ -1,4 +1,5 @@
 -- Create function to update user roles (admin only)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_user_role' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_user_role(_user_email text, _role app_role, _grant boolean DEFAULT true)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -51,6 +52,7 @@ END;
 $function$;
 
 -- Create function to get user by email for admin use
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_user_by_email_admin' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_user_by_email_admin(_email text)
 RETURNS TABLE(
     user_id uuid,

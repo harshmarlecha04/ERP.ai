@@ -5,12 +5,14 @@
 DROP TRIGGER IF EXISTS formula_security_validation_trigger ON public.formulas;
 
 -- 2. Recreate the security validation trigger
+DROP TRIGGER IF EXISTS formula_security_validation_trigger ON public.formulas;
 CREATE TRIGGER formula_security_validation_trigger
     BEFORE INSERT OR UPDATE ON public.formulas
     FOR EACH ROW
     EXECUTE FUNCTION public.validate_formula_security_level();
 
 -- 3. Add unique constraint to security_config to prevent conflicts
+ALTER TABLE public.security_config DROP CONSTRAINT IF EXISTS unique_security_config_key;
 ALTER TABLE public.security_config 
 ADD CONSTRAINT unique_security_config_key 
 UNIQUE (config_key);
@@ -28,6 +30,7 @@ VALUES (
 ON CONFLICT (config_key) DO NOTHING;
 
 -- 5. Create a function to deactivate emergency lockdown
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='deactivate_emergency_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.deactivate_emergency_lockdown()
 RETURNS jsonb AS $$
 BEGIN

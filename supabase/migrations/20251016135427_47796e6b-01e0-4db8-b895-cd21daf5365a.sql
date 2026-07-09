@@ -10,7 +10,7 @@ ON CONFLICT (customer_code) DO NOTHING;
 
 -- Step 2: Insert Historical Customer Orders (Past 12 Months)
 -- GG006 (Seamoss & Mushroom) - Increasing trend (35 orders)
-INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
+DO $seed$ BEGIN INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
 SELECT 
   c.id,
   '525bf96d-b21d-4cb1-9236-9d7224e370cd'::uuid,
@@ -38,10 +38,10 @@ WHERE
   (c.customer_code = 'NHD-002' AND o.month IN (1,2,4,6,8,9,10,12)) OR
   (c.customer_code = 'GLP-003' AND o.month IN (2,4,5,7,9,11)) OR
   (c.customer_code = 'OMC-004' AND o.month IN (8,9,10,11,12)) OR
-  (c.customer_code = 'HHP-005' AND o.month IN (3,6,9,12));
+  (c.customer_code = 'HHP-005' AND o.month IN (3,6,9,12)); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- PV013 (ACV + Ginger) - Stable trend (25 orders)
-INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
+DO $seed$ BEGIN INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
 SELECT 
   c.id,
   'c7f7ec92-b282-44f7-bd68-2cd6fa7f3a19'::uuid,
@@ -61,10 +61,10 @@ FROM
 WHERE 
   (c.customer_code = 'WRC-001' AND o.month IN (1,3,5,7,9,11)) OR
   (c.customer_code = 'GLP-003' AND o.month IN (1,2,4,6,8,10,12)) OR
-  (c.customer_code = 'HHP-005' AND o.month IN (2,5,8,11));
+  (c.customer_code = 'HHP-005' AND o.month IN (2,5,8,11)); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- GG005 (Magnesium & L-Theanine) - Decreasing trend (18 orders)
-INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
+DO $seed$ BEGIN INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
 SELECT 
   c.id,
   '0fee5e42-f8a3-44e5-8691-83bfe2158aec'::uuid,
@@ -85,10 +85,10 @@ FROM
   (SELECT generate_series(1, 12) AS month) o
 WHERE 
   (c.customer_code = 'NHD-002' AND o.month IN (1,2,4,6,8,10,11,12)) OR
-  (c.customer_code = 'GLP-003' AND o.month IN (1,3,5,7,9,11));
+  (c.customer_code = 'GLP-003' AND o.month IN (1,3,5,7,9,11)); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- GG013 (B6 + Melatonin) - Seasonal trend (22 orders)
-INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
+DO $seed$ BEGIN INSERT INTO public.customer_orders (customer_id, formula_id, bottle_size, bottles_ordered, due_date, priority, status, notes, order_type)
 SELECT 
   c.id,
   '8f1ea7f9-9e24-4b1b-bbf9-4d7ecd38e78c'::uuid,
@@ -113,10 +113,10 @@ WHERE
   (c.customer_code = 'WRC-001' AND o.month IN (1,2,11,12)) OR
   (c.customer_code = 'NHD-002' AND o.month IN (1,3,9,10,11,12)) OR
   (c.customer_code = 'GLP-003' AND o.month IN (2,4,10,11)) OR
-  (c.customer_code = 'OMC-004' AND o.month IN (11,12));
+  (c.customer_code = 'OMC-004' AND o.month IN (11,12)); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- Step 3: Insert Demand Forecasts (Next 3 Months)
-INSERT INTO public.demand_forecasts (formula_id, forecast_month, forecasted_bottles, forecasted_batches, confidence_score, trend)
+DO $seed$ BEGIN INSERT INTO public.demand_forecasts (formula_id, forecast_month, forecasted_bottles, forecasted_batches, confidence_score, trend)
 VALUES
   -- GG006 (Seamoss & Mushroom) - Increasing
   ('525bf96d-b21d-4cb1-9236-9d7224e370cd', '2025-01-01', 450, 3, 0.85, 'increasing'),
@@ -136,10 +136,10 @@ VALUES
   -- GG013 (B6 + Melatonin) - Seasonal (declining after winter)
   ('8f1ea7f9-9e24-4b1b-bbf9-4d7ecd38e78c', '2025-01-01', 380, 3, 0.88, 'stable'),
   ('8f1ea7f9-9e24-4b1b-bbf9-4d7ecd38e78c', '2025-02-01', 350, 2, 0.85, 'stable'),
-  ('8f1ea7f9-9e24-4b1b-bbf9-4d7ecd38e78c', '2025-03-01', 250, 2, 0.80, 'decreasing');
+  ('8f1ea7f9-9e24-4b1b-bbf9-4d7ecd38e78c', '2025-03-01', 250, 2, 0.80, 'decreasing'); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- Step 4: Insert Demand Anomalies (3 alerts) - using correct column names
-INSERT INTO public.demand_anomalies (formula_id, anomaly_month, expected_orders, actual_orders, variance_percent, severity, acknowledged, acknowledged_at, notes)
+DO $seed$ BEGIN INSERT INTO public.demand_anomalies (formula_id, anomaly_month, expected_orders, actual_orders, variance_percent, severity, acknowledged, acknowledged_at, notes)
 VALUES
   -- Critical: GG005 underperformance (orders, not bottles)
   ('0fee5e42-f8a3-44e5-8691-83bfe2158aec', '2024-12-01', 4, 2, -50.0, 'critical', false, NULL, NULL),
@@ -148,10 +148,10 @@ VALUES
   ('c7f7ec92-b282-44f7-bd68-2cd6fa7f3a19', '2024-12-01', 5, 4, -20.0, 'warning', false, NULL, NULL),
   
   -- Exceeding: GG006 above forecast (acknowledged)
-  ('525bf96d-b21d-4cb1-9236-9d7224e370cd', '2024-11-01', 8, 11, 37.5, 'exceeding', true, '2024-11-20 10:30:00', 'New retail partnership with Organic Market Chain signed in November. They placed a large launch order.');
+  ('525bf96d-b21d-4cb1-9236-9d7224e370cd', '2024-11-01', 8, 11, 37.5, 'exceeding', true, '2024-11-20 10:30:00', 'New retail partnership with Organic Market Chain signed in November. They placed a large launch order.'); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- Step 5: Insert Safety Stock Recommendations
-INSERT INTO public.safety_stock_recommendations (raw_material_id, recommended_min_kg, recommended_reorder_kg, based_on_months_data, confidence_score, avg_daily_usage_kg, max_daily_usage_kg, usage_variability)
+DO $seed$ BEGIN INSERT INTO public.safety_stock_recommendations (raw_material_id, recommended_min_kg, recommended_reorder_kg, based_on_months_data, confidence_score, avg_daily_usage_kg, max_daily_usage_kg, usage_variability)
 VALUES
   -- Cyanocobalamin B12
   ('fb4744a1-806f-4920-90e6-e45b3c36eecc', 15.0, 25.0, 6, 0.80, 0.36, 0.65, 35.2),
@@ -166,4 +166,4 @@ VALUES
   ('379970e2-00be-43bf-9542-05946ce715a4', 75.0, 125.0, 6, 0.95, 1.79, 2.45, 8.3),
   
   -- Pyridoxine HCL (Vitamin B6)
-  ('fa2479f2-769f-4c5d-b57a-ca7894086af4', 8.0, 15.0, 6, 0.85, 0.19, 0.35, 22.5);
+  ('fa2479f2-769f-4c5d-b57a-ca7894086af4', 8.0, 15.0, 6, 0.85, 0.19, 0.35, 22.5); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;

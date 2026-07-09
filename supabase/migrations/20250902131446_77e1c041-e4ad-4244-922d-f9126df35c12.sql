@@ -5,6 +5,7 @@
 DROP TRIGGER IF EXISTS formula_security_validation_trigger ON public.formulas;
 
 -- 2. Recreate the security validation trigger
+DROP TRIGGER IF EXISTS formula_security_validation_trigger ON public.formulas;
 CREATE TRIGGER formula_security_validation_trigger
     BEFORE INSERT OR UPDATE ON public.formulas
     FOR EACH ROW
@@ -45,6 +46,7 @@ VALUES
 ON CONFLICT (config_key) DO NOTHING;
 
 -- 5. Create a simple function to get security overview
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_security_overview' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_security_overview()
 RETURNS jsonb AS $$
 DECLARE

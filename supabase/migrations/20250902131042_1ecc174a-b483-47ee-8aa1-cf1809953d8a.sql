@@ -1,4 +1,5 @@
 -- Enhanced formula security - Step 1: Create the validation function first
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_security_level' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_security_level()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -27,6 +28,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Create the trigger now that the function exists
+DROP TRIGGER IF EXISTS formula_security_validation_trigger ON public.formulas;
 CREATE TRIGGER formula_security_validation_trigger
     BEFORE INSERT OR UPDATE ON public.formulas
     FOR EACH ROW

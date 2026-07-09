@@ -1,5 +1,5 @@
 -- Create unified activity tracking table
-CREATE TABLE public.user_activity_audit (
+CREATE TABLE IF NOT EXISTS public.user_activity_audit (
     id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL,
     activity_type TEXT NOT NULL,
@@ -17,10 +17,11 @@ CREATE TABLE public.user_activity_audit (
 );
 
 -- Enable RLS
-ALTER TABLE public.user_activity_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.user_activity_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create policy to only allow specific user to view activity data
-CREATE POLICY "Only mfg@pharmvista.com can view activity audit"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only mfg@pharmvista.com can view activity audit" ON public.user_activity_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only mfg@pharmvista.com can view activity audit"
 ON public.user_activity_audit
 FOR SELECT
 USING (
@@ -30,9 +31,10 @@ USING (
         WHERE au.id = auth.uid() 
         AND au.email = 'mfg@pharmvista.com'
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create function to get unified user activity with email-based access control
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_all_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_all_user_activity()
 RETURNS TABLE(
     id UUID,
@@ -164,6 +166,7 @@ END;
 $$;
 
 -- Create audit trigger function for comprehensive tracking
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_user_activity()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -230,22 +233,27 @@ END;
 $$;
 
 -- Create audit triggers for key tables
+DROP TRIGGER IF EXISTS audit_raw_materials ON public.raw_materials;
 CREATE TRIGGER audit_raw_materials
     AFTER INSERT OR UPDATE OR DELETE ON public.raw_materials
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();
 
+DROP TRIGGER IF EXISTS audit_raw_material_lots ON public.raw_material_lots;
 CREATE TRIGGER audit_raw_material_lots
     AFTER INSERT OR UPDATE OR DELETE ON public.raw_material_lots
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();
 
+DROP TRIGGER IF EXISTS audit_purchase_orders ON public.purchase_orders;
 CREATE TRIGGER audit_purchase_orders
     AFTER INSERT OR UPDATE OR DELETE ON public.purchase_orders
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();
 
+DROP TRIGGER IF EXISTS audit_production_schedules ON public.production_schedules;
 CREATE TRIGGER audit_production_schedules
     AFTER INSERT OR UPDATE OR DELETE ON public.production_schedules
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();
 
+DROP TRIGGER IF EXISTS audit_user_roles ON public.user_roles;
 CREATE TRIGGER audit_user_roles
     AFTER INSERT OR UPDATE OR DELETE ON public.user_roles
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();

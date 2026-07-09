@@ -1,1 +1,1 @@
-ALTER TABLE production_schedule_items ADD COLUMN notes text;
+ALTER TABLE production_schedule_items ADD COLUMN IF NOT EXISTS notes text;

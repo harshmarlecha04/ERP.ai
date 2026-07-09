@@ -1,4 +1,5 @@
 -- Create comprehensive business hours validation function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='is_business_hours' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.is_business_hours()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -25,6 +26,7 @@ END;
 $$;
 
 -- Update trade secret access validation to allow all users during business hours
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -95,7 +97,8 @@ EXCEPTION
 END $$;
 
 -- Create new supplier policies
-CREATE POLICY "business_hours_supplier_view" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "business_hours_supplier_view" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "business_hours_supplier_view" 
 ON public.suppliers 
 FOR SELECT 
 USING (
@@ -105,13 +108,14 @@ USING (
         has_role(auth.uid(), 'admin'::app_role) OR 
         has_role(auth.uid(), 'production_manager'::app_role)
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "admin_supplier_mgmt" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "admin_supplier_mgmt" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "admin_supplier_mgmt" 
 ON public.suppliers 
 FOR ALL
 USING (has_role(auth.uid(), 'admin'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Drop and recreate formula policies
 DO $$
@@ -122,7 +126,8 @@ EXCEPTION
     WHEN undefined_object THEN NULL;
 END $$;
 
-CREATE POLICY "business_hours_formula_access" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "business_hours_formula_access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "business_hours_formula_access" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -136,4 +141,4 @@ USING (
         ((security_level = 'confidential'::text) AND has_role(auth.uid(), 'rd_manager'::app_role)) OR 
         ((security_level = 'trade_secret'::text) AND validate_trade_secret_access_enhanced(auth.uid(), id))
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

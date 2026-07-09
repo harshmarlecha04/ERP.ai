@@ -5,6 +5,7 @@ WHERE schedule_item_id NOT IN (
 );
 
 -- Add foreign key constraint for production_ingredient_usage
+ALTER TABLE public.production_ingredient_usage DROP CONSTRAINT IF EXISTS fk_production_ingredient_usage_schedule_item;
 ALTER TABLE public.production_ingredient_usage 
 ADD CONSTRAINT fk_production_ingredient_usage_schedule_item 
 FOREIGN KEY (schedule_item_id) REFERENCES public.production_schedule_items(id) 

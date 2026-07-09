@@ -15,30 +15,34 @@ CREATE TABLE IF NOT EXISTS public.po_scan_results (
 );
 
 CREATE INDEX IF NOT EXISTS idx_po_scan_results_order_id ON public.po_scan_results(order_id);
+DO $rls$ BEGIN ALTER TABLE public.po_scan_results ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.po_scan_results ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can view PO scan results"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view PO scan results" ON public.po_scan_results; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view PO scan results"
   ON public.po_scan_results FOR SELECT
   TO authenticated
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can insert PO scan results"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can insert PO scan results" ON public.po_scan_results; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can insert PO scan results"
   ON public.po_scan_results FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can update PO scan results"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update PO scan results" ON public.po_scan_results; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can update PO scan results"
   ON public.po_scan_results FOR UPDATE
   TO authenticated
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Admins can delete PO scan results"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can delete PO scan results" ON public.po_scan_results; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can delete PO scan results"
   ON public.po_scan_results FOR DELETE
   TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
+DROP TRIGGER IF EXISTS trg_po_scan_results_updated_at ON public.po_scan_results;
 CREATE TRIGGER trg_po_scan_results_updated_at
   BEFORE UPDATE ON public.po_scan_results
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

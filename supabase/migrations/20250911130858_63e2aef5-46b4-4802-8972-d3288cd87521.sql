@@ -15,6 +15,7 @@ SET config_value = jsonb_set(
 WHERE config_key = 'trade_secret_ip_restrictions';
 
 -- 3. Create enhanced trade secret validation function (replaces complex existing one)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_strict' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_strict(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -70,7 +71,7 @@ BEGIN
     
     -- Log successful access for audit
     INSERT INTO public.security_alerts (alert_type, severity, details)
-    VALUES ('trade_secret_access_granted', 'info', 
+    VALUES ('trade_secret_access_granted', 'low', 
            jsonb_build_object('user_id', _user_id, 'formula_id', _formula_id, 'time', now()));
     
     RETURN true;

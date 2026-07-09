@@ -11,17 +11,20 @@ CREATE TABLE IF NOT EXISTS public.order_status_history (
 );
 
 -- Enable RLS
-ALTER TABLE public.order_status_history ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.order_status_history ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "Authenticated users can view order status history"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view order status history" ON public.order_status_history; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view order status history"
   ON public.order_status_history FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can insert order status history"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can insert order status history" ON public.order_status_history; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can insert order status history"
   ON public.order_status_history FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Function to automatically update order status based on batch progress
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='auto_update_order_status' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.auto_update_order_status()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -91,6 +94,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Trigger on production_schedule_items to auto-update order status
 DROP TRIGGER IF EXISTS trigger_auto_update_order_status ON public.production_schedule_items;
+DROP TRIGGER IF EXISTS trigger_auto_update_order_status ON public.production_schedule_items;
 CREATE TRIGGER trigger_auto_update_order_status
   AFTER UPDATE OF current_stage
   ON public.production_schedule_items
@@ -98,6 +102,7 @@ CREATE TRIGGER trigger_auto_update_order_status
   EXECUTE FUNCTION public.auto_update_order_status();
 
 -- Function to get production capacity per day
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_production_capacity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_production_capacity(
   p_start_date date,
   p_end_date date
@@ -132,6 +137,7 @@ END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 
 -- Function to get upcoming material shortages
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_upcoming_material_shortages' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_upcoming_material_shortages(
   p_days_ahead integer DEFAULT 30
 )

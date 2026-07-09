@@ -1,11 +1,12 @@
 -- Fix critical security vulnerability: Restrict formula access based on security levels and permissions
 -- Drop the overly permissive RLS policy
-DROP POLICY IF EXISTS "All authenticated users can manage formulas" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can manage formulas" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure RLS policies for formulas based on security levels and user permissions
 
 -- Policy for SELECT: Only allow access if user has proper clearance/permission
-CREATE POLICY "Secure formula access for viewing" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula access for viewing" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure formula access for viewing" 
 ON public.formulas 
 FOR SELECT
 TO authenticated
@@ -21,20 +22,22 @@ USING (
     (security_level IN ('confidential', 'trade_secret') AND 
      validate_formula_access_secure(auth.uid(), id, 'view'))
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Policy for INSERT: Only R&D managers and admins can create formulas
-CREATE POLICY "Secure formula creation" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula creation" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure formula creation" 
 ON public.formulas 
 FOR INSERT
 TO authenticated
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'rd_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Policy for UPDATE: Restrict updates based on security level and user permissions
-CREATE POLICY "Secure formula updates" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula updates" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure formula updates" 
 ON public.formulas 
 FOR UPDATE
 TO authenticated
@@ -53,23 +56,23 @@ USING (
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'rd_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Policy for DELETE: Only admins can soft delete formulas
-CREATE POLICY "Secure formula deletion" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula deletion" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure formula deletion" 
 ON public.formulas 
 FOR UPDATE
 TO authenticated
 USING (
-  has_role(auth.uid(), 'admin'::app_role) AND
-  -- This policy specifically handles soft deletes (setting is_deleted = true)
-  OLD.is_deleted = false
+  has_role(auth.uid(), 'admin'::app_role)
 )
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Update the existing formula access function to be more comprehensive
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_specific_formula' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_specific_formula(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -110,6 +113,7 @@ END;
 $$;
 
 -- Create a function to check if user can list formulas (for the formulas page)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid)
 RETURNS TABLE(
     id uuid,

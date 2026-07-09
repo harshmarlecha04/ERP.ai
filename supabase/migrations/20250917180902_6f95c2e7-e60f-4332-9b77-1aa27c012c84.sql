@@ -1,2 +1,2 @@
 -- Re-enable RLS on formulas table now that the core issue is fixed
-ALTER TABLE public.formulas ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.formulas ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;

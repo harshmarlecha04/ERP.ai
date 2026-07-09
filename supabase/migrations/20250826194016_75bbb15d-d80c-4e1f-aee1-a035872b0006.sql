@@ -1,5 +1,5 @@
 -- Create table to track completed batch deductions
-CREATE TABLE public.completed_batch_deductions (
+CREATE TABLE IF NOT EXISTS public.completed_batch_deductions (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   schedule_item_id UUID NOT NULL,
   formula_code TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE public.completed_batch_deductions (
 );
 
 -- Create table to track individual ingredient deductions for undo capability
-CREATE TABLE public.ingredient_deductions (
+CREATE TABLE IF NOT EXISTS public.ingredient_deductions (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   completed_batch_id UUID NOT NULL REFERENCES public.completed_batch_deductions(id) ON DELETE CASCADE,
   raw_material_id UUID NOT NULL,
@@ -27,23 +27,26 @@ CREATE TABLE public.ingredient_deductions (
 );
 
 -- Enable RLS
-ALTER TABLE public.completed_batch_deductions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ingredient_deductions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.completed_batch_deductions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE public.ingredient_deductions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create RLS policies
-CREATE POLICY "Authenticated users can manage completed batch deductions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage completed batch deductions" ON public.completed_batch_deductions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage completed batch deductions"
   ON public.completed_batch_deductions
   FOR ALL
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can manage ingredient deductions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage ingredient deductions" ON public.ingredient_deductions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage ingredient deductions"
   ON public.ingredient_deductions
   FOR ALL
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create function to deduct inventory and record the transaction
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='deduct_inventory_for_batch' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.deduct_inventory_for_batch(
   p_schedule_item_id UUID,
   p_formula_code TEXT,
@@ -131,6 +134,7 @@ END;
 $$;
 
 -- Create function to undo inventory deduction
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='undo_inventory_deduction' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.undo_inventory_deduction(p_completed_batch_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql

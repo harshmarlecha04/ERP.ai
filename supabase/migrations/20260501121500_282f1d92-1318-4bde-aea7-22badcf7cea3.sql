@@ -2,7 +2,7 @@
 -- ============================================================
 -- COA SETTINGS (global default + per-formula overrides)
 -- ============================================================
-CREATE TABLE public.coa_settings (
+CREATE TABLE IF NOT EXISTS public.coa_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   formula_id uuid REFERENCES public.formulas(id) ON DELETE CASCADE,
   is_global_default boolean NOT NULL DEFAULT false,
@@ -25,11 +25,11 @@ CREATE TABLE public.coa_settings (
   )
 );
 
-CREATE UNIQUE INDEX coa_settings_global_unique
+CREATE UNIQUE INDEX IF NOT EXISTS coa_settings_global_unique
   ON public.coa_settings ((is_global_default))
   WHERE is_global_default = true;
 
-CREATE UNIQUE INDEX coa_settings_formula_unique
+CREATE UNIQUE INDEX IF NOT EXISTS coa_settings_formula_unique
   ON public.coa_settings (formula_id)
   WHERE formula_id IS NOT NULL;
 
@@ -39,7 +39,7 @@ INSERT INTO public.coa_settings (is_global_default) VALUES (true);
 -- ============================================================
 -- CERTIFICATES OF ANALYSIS (audit log of generated COAs)
 -- ============================================================
-CREATE TABLE public.certificates_of_analysis (
+CREATE TABLE IF NOT EXISTS public.certificates_of_analysis (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   formula_id uuid NOT NULL REFERENCES public.formulas(id) ON DELETE CASCADE,
   batch_lot text NOT NULL,
@@ -57,13 +57,13 @@ CREATE TABLE public.certificates_of_analysis (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX certificates_of_analysis_formula_id_idx
+CREATE INDEX IF NOT EXISTS certificates_of_analysis_formula_id_idx
   ON public.certificates_of_analysis (formula_id, created_at DESC);
 
 -- ============================================================
 -- USER SIGNATURES (one per user)
 -- ============================================================
-CREATE TABLE public.user_signatures (
+CREATE TABLE IF NOT EXISTS public.user_signatures (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   signature_path text NOT NULL,
   approver_name text,
@@ -74,10 +74,12 @@ CREATE TABLE public.user_signatures (
 -- ============================================================
 -- updated_at triggers
 -- ============================================================
+DROP TRIGGER IF EXISTS trg_coa_settings_updated ON public.coa_settings;
 CREATE TRIGGER trg_coa_settings_updated
   BEFORE UPDATE ON public.coa_settings
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS trg_user_signatures_updated ON public.user_signatures;
 CREATE TRIGGER trg_user_signatures_updated
   BEFORE UPDATE ON public.user_signatures
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -85,75 +87,87 @@ CREATE TRIGGER trg_user_signatures_updated
 -- ============================================================
 -- RLS
 -- ============================================================
-ALTER TABLE public.coa_settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.certificates_of_analysis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_signatures ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.coa_settings ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE public.certificates_of_analysis ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE public.user_signatures ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- coa_settings: any authenticated user can read; only admins can modify
-CREATE POLICY "coa_settings_select_auth"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_settings_select_auth" ON public.coa_settings; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_settings_select_auth"
   ON public.coa_settings FOR SELECT
   TO authenticated
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_settings_insert_admin"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_settings_insert_admin" ON public.coa_settings; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_settings_insert_admin"
   ON public.coa_settings FOR INSERT
   TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  WITH CHECK (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_settings_update_admin"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_settings_update_admin" ON public.coa_settings; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_settings_update_admin"
   ON public.coa_settings FOR UPDATE
   TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  WITH CHECK (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_settings_delete_admin"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_settings_delete_admin" ON public.coa_settings; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_settings_delete_admin"
   ON public.coa_settings FOR DELETE
   TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- certificates_of_analysis: authenticated users can read, insert; only admin can delete
-CREATE POLICY "coa_select_auth"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_select_auth" ON public.certificates_of_analysis; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_select_auth"
   ON public.certificates_of_analysis FOR SELECT
   TO authenticated
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_insert_auth"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_insert_auth" ON public.certificates_of_analysis; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_insert_auth"
   ON public.certificates_of_analysis FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = generated_by);
+  WITH CHECK (auth.uid() = generated_by); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_update_admin"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_update_admin" ON public.certificates_of_analysis; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_update_admin"
   ON public.certificates_of_analysis FOR UPDATE
   TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  WITH CHECK (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_delete_admin"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_delete_admin" ON public.certificates_of_analysis; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_delete_admin"
   ON public.certificates_of_analysis FOR DELETE
   TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- user_signatures: each user manages their own only
-CREATE POLICY "sig_select_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "sig_select_own" ON public.user_signatures; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "sig_select_own"
   ON public.user_signatures FOR SELECT
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "sig_insert_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "sig_insert_own" ON public.user_signatures; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "sig_insert_own"
   ON public.user_signatures FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "sig_update_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "sig_update_own" ON public.user_signatures; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "sig_update_own"
   ON public.user_signatures FOR UPDATE
   TO authenticated
   USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "sig_delete_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "sig_delete_own" ON public.user_signatures; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "sig_delete_own"
   ON public.user_signatures FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- ============================================================
 -- STORAGE BUCKETS
@@ -167,38 +181,45 @@ VALUES ('signatures', 'signatures', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- coa-pdfs: any authenticated user can read & insert
-CREATE POLICY "coa_pdfs_select_auth"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_pdfs_select_auth" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_pdfs_select_auth"
   ON storage.objects FOR SELECT
   TO authenticated
-  USING (bucket_id = 'coa-pdfs');
+  USING (bucket_id = 'coa-pdfs'); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_pdfs_insert_auth"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_pdfs_insert_auth" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_pdfs_insert_auth"
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK (bucket_id = 'coa-pdfs');
+  WITH CHECK (bucket_id = 'coa-pdfs'); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "coa_pdfs_delete_admin"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "coa_pdfs_delete_admin" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "coa_pdfs_delete_admin"
   ON storage.objects FOR DELETE
   TO authenticated
-  USING (bucket_id = 'coa-pdfs' AND public.has_role(auth.uid(), 'admin'));
+  USING (bucket_id = 'coa-pdfs' AND public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- signatures: each user can read/write their own folder (path = {user_id}/...)
-CREATE POLICY "signatures_select_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "signatures_select_own" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "signatures_select_own"
   ON storage.objects FOR SELECT
   TO authenticated
-  USING (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]);
+  USING (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "signatures_insert_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "signatures_insert_own" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "signatures_insert_own"
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]);
+  WITH CHECK (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "signatures_update_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "signatures_update_own" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "signatures_update_own"
   ON storage.objects FOR UPDATE
   TO authenticated
-  USING (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]);
+  USING (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "signatures_delete_own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "signatures_delete_own" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "signatures_delete_own"
   ON storage.objects FOR DELETE
   TO authenticated
-  USING (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]);
+  USING (bucket_id = 'signatures' AND auth.uid()::text = (storage.foldername(name))[1]); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

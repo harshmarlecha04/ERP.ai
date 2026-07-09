@@ -5,6 +5,7 @@
 DROP TRIGGER IF EXISTS update_formula_access_stats_trigger ON public.formulas;
 
 -- Also update the function to avoid updating during soft deletes
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_formula_access_stats' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_formula_access_stats()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -30,6 +31,7 @@ END;
 $function$;
 
 -- Create AFTER trigger on formula_access_audit instead of formulas table
+DROP TRIGGER IF EXISTS update_formula_access_stats_trigger ON public.formula_access_audit;
 DROP TRIGGER IF EXISTS update_formula_access_stats_trigger ON public.formula_access_audit;
 CREATE TRIGGER update_formula_access_stats_trigger
     AFTER INSERT ON public.formula_access_audit

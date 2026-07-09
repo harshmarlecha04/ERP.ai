@@ -1,5 +1,5 @@
 -- Insert sample activities with a known user ID from the users table
-INSERT INTO public.user_activity_audit (
+DO $seed$ BEGIN INSERT INTO public.user_activity_audit (
     user_id, activity_type, table_name, operation, record_id,
     new_values, ip_address, details, risk_level
 ) VALUES 
@@ -90,4 +90,4 @@ INSERT INTO public.user_activity_audit (
     '192.168.1.100',
     '{"timestamp": "2025-01-11T11:30:00Z", "trigger": "sample_data"}'::jsonb,
     'medium'
-);
+); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;

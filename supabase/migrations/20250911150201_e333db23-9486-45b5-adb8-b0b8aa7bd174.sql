@@ -5,6 +5,7 @@ ALTER TABLE public.formula_access_audit ALTER COLUMN formula_id DROP NOT NULL;
 DROP FUNCTION IF EXISTS public.get_accessible_formulas() CASCADE;
 
 -- Create enhanced log_formula_access function that handles null formula_id
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_formula_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_formula_access_enhanced(_user_id uuid, _formula_id uuid, _access_type text, _details jsonb DEFAULT '{}'::jsonb)
  RETURNS void
  LANGUAGE plpgsql
@@ -13,7 +14,7 @@ CREATE OR REPLACE FUNCTION public.log_formula_access_enhanced(_user_id uuid, _fo
 AS $function$
 BEGIN
     -- Log to audit table, allowing null formula_id for list access
-    INSERT INTO public.formula_access_audit (
+DO $aud$ BEGIN INSERT INTO public.formula_access_audit (
         user_id,
         formula_id,
         access_type,
@@ -25,11 +26,12 @@ BEGIN
         _access_type,
         _details,
         now()
-    );
+    ); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
 END;
 $function$;
 
 -- Update get_accessible_formulas to use the enhanced logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid)
  RETURNS TABLE(id uuid, code text, name text, default_batch_size_kg numeric, recipe_json jsonb, active_ingredients_json jsonb, security_level text, classification_level text, version text, yield_uom text, notes text, product_code_line text, procedure_text text, status text, created_at timestamp with time zone, updated_at timestamp with time zone, last_accessed_at timestamp with time zone, access_count integer, requires_approval boolean, is_deleted boolean, average_piece_weight numeric, total_pieces integer, formula_code text)
  LANGUAGE plpgsql
@@ -116,6 +118,7 @@ END;
 $function$;
 
 -- Update the validate_trade_secret_access_enhanced function for business hours
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(_user_id uuid, _formula_id uuid)
  RETURNS boolean
  LANGUAGE plpgsql

@@ -1,5 +1,6 @@
 -- Create a secure function to access raw material usage statistics
 -- This replaces direct access to the view with permission-controlled access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_raw_material_usage_stats' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_raw_material_usage_stats()
 RETURNS TABLE(
   raw_material_id uuid,

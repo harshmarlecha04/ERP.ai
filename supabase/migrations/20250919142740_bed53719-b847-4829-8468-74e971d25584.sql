@@ -1,7 +1,8 @@
 -- Temporarily update RLS policies to allow admin users to create formulas
-DROP POLICY IF EXISTS "Secure formula creation" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula creation" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Secure formula creation" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula creation" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure formula creation" 
 ON public.formulas 
 FOR INSERT 
 WITH CHECK (
@@ -9,4 +10,4 @@ WITH CHECK (
         has_role(auth.uid(), 'admin'::app_role) OR 
         has_role(auth.uid(), 'rd_manager'::app_role)
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

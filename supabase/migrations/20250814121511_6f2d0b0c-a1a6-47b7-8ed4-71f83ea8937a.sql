@@ -29,6 +29,7 @@ BEGIN
 END $$;
 
 -- Create a trigger to automatically assign admin role to the first user on signup
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='assign_first_user_as_admin' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.assign_first_user_as_admin()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -45,6 +46,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create trigger to run after user creation
+DROP TRIGGER IF EXISTS assign_first_admin_trigger ON auth.users;
 DROP TRIGGER IF EXISTS assign_first_admin_trigger ON auth.users;
 CREATE TRIGGER assign_first_admin_trigger
     AFTER INSERT ON auth.users

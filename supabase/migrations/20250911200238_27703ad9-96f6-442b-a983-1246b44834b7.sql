@@ -5,6 +5,7 @@
 DROP FUNCTION IF EXISTS public.approve_trade_secret_access(uuid, boolean, text);
 
 -- Now create the missing validate_formula_access_secure function that's referenced in RLS
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_access_secure(
     _user_id uuid,
     _formula_id uuid, 
@@ -87,6 +88,7 @@ END;
 $function$;
 
 -- Create function to log enhanced formula access for audit trail
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_formula_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_formula_access_enhanced(
     _user_id uuid,
     _formula_id uuid,
@@ -114,7 +116,7 @@ BEGIN
     END;
     
     -- Enhanced details with security context
-    INSERT INTO public.formula_access_audit (
+DO $aud$ BEGIN INSERT INTO public.formula_access_audit (
         user_id,
         formula_id, 
         access_type,
@@ -136,11 +138,12 @@ BEGIN
         inet_client_addr(),
         current_setting('request.headers', true)::jsonb->>'user-agent',
         now()
-    );
+    ); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
 END;
 $function$;
 
 -- Create function to check business hours (enhanced security for confidential formulas)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='is_business_hours' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.is_business_hours()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -160,6 +163,7 @@ END;
 $function$;
 
 -- Create RPC function to get accessible formulas with proper security filtering
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas()
 RETURNS TABLE (
     id uuid,

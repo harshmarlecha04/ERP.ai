@@ -27,6 +27,7 @@ WHERE name ILIKE '%magnesium%'
    OR recipe_json IS NOT NULL;
 
 -- 4. Create enhanced trade secret protection function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -129,9 +130,10 @@ END;
 $$;
 
 -- 5. Update RLS policies to use enhanced validation for trade secrets
-DROP POLICY IF EXISTS "Secure formula access for viewing" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula access for viewing" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Enhanced trade secret protection" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enhanced trade secret protection" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Enhanced trade secret protection" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -147,9 +149,10 @@ USING (
      validate_trade_secret_access_enhanced(auth.uid(), id)
     )
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 6. Create secure audit trail for trade secrets
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='create_trade_secret_session' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.create_trade_secret_session(_formula_id uuid)
 RETURNS uuid
 LANGUAGE plpgsql
@@ -174,7 +177,7 @@ BEGIN
     
     -- Log session creation
     INSERT INTO public.security_alerts (alert_type, severity, details)
-    VALUES ('trade_secret_session_created', 'info', 
+    VALUES ('trade_secret_session_created', 'low', 
            jsonb_build_object('user_id', auth.uid(), 'formula_id', _formula_id, 'session_id', session_id));
     
     RETURN session_id;

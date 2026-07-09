@@ -2,6 +2,7 @@
 -- This migration fixes the security warnings related to function search paths
 
 -- Fix all functions to have immutable search_path set for security
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_trade_secret_formula_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_trade_secret_formula_secure(
     _user_id uuid, 
     _formula_id uuid, 
@@ -111,6 +112,7 @@ END;
 $$;
 
 -- Fix approval function search path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='approve_trade_secret_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.approve_trade_secret_access(
     _user_id uuid, 
     _formula_id uuid, 
@@ -206,6 +208,7 @@ END;
 $$;
 
 -- Fix emergency lockdown function search path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_lockdown_trade_secrets' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_lockdown_trade_secrets(
     _reason text
 )
@@ -242,6 +245,7 @@ END;
 $$;
 
 -- Create session start function with proper search path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='start_trade_secret_session' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.start_trade_secret_session(
     _formula_id uuid
 )
@@ -266,7 +270,7 @@ BEGIN
     END IF;
     
     -- Generate secure session token
-    session_token := encode(gen_random_bytes(32), 'hex');
+    session_token := encode(extensions.gen_random_bytes(32), 'hex');
     
     -- Terminate any existing active sessions for this user/formula
     UPDATE public.trade_secret_access_sessions 

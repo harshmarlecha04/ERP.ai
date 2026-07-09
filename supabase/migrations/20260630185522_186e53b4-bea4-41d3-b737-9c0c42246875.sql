@@ -2,7 +2,7 @@
 -- =========================
 -- shipping_entries
 -- =========================
-CREATE TABLE public.shipping_entries (
+CREATE TABLE IF NOT EXISTS public.shipping_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   packaging_completion_id UUID UNIQUE REFERENCES public.packaging_completion_records(id) ON DELETE CASCADE,
   schedule_id UUID REFERENCES public.packaging_schedule(id) ON DELETE SET NULL,
@@ -28,28 +28,31 @@ CREATE TABLE public.shipping_entries (
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.shipping_entries TO authenticated;
 GRANT ALL ON public.shipping_entries TO service_role;
+DO $rls$ BEGIN ALTER TABLE public.shipping_entries ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.shipping_entries ENABLE ROW LEVEL SECURITY;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can view shipping entries" ON public.shipping_entries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can view shipping entries"
+  ON public.shipping_entries FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can insert shipping entries" ON public.shipping_entries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can insert shipping entries"
+  ON public.shipping_entries FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can update shipping entries" ON public.shipping_entries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can update shipping entries"
+  ON public.shipping_entries FOR UPDATE TO authenticated USING (true) WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can delete shipping entries" ON public.shipping_entries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can delete shipping entries"
+  ON public.shipping_entries FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated can view shipping entries"
-  ON public.shipping_entries FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert shipping entries"
-  ON public.shipping_entries FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update shipping entries"
-  ON public.shipping_entries FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated can delete shipping entries"
-  ON public.shipping_entries FOR DELETE TO authenticated USING (true);
-
-CREATE INDEX idx_shipping_entries_status ON public.shipping_entries(status);
-CREATE INDEX idx_shipping_entries_customer ON public.shipping_entries(customer_id);
-CREATE INDEX idx_shipping_entries_order ON public.shipping_entries(order_header_id);
+CREATE INDEX IF NOT EXISTS idx_shipping_entries_status ON public.shipping_entries(status);
+CREATE INDEX IF NOT EXISTS idx_shipping_entries_customer ON public.shipping_entries(customer_id);
+CREATE INDEX IF NOT EXISTS idx_shipping_entries_order ON public.shipping_entries(order_header_id);
 
 -- =========================
 -- customer_invoices
 -- =========================
 CREATE SEQUENCE IF NOT EXISTS public.customer_invoice_seq START 1;
 
-CREATE TABLE public.customer_invoices (
+CREATE TABLE IF NOT EXISTS public.customer_invoices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   invoice_number TEXT NOT NULL UNIQUE,
   customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
@@ -71,22 +74,25 @@ CREATE TABLE public.customer_invoices (
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.customer_invoices TO authenticated;
 GRANT ALL ON public.customer_invoices TO service_role;
+DO $rls$ BEGIN ALTER TABLE public.customer_invoices ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.customer_invoices ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated can view invoices"
-  ON public.customer_invoices FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert invoices"
-  ON public.customer_invoices FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update invoices"
-  ON public.customer_invoices FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated can delete invoices"
-  ON public.customer_invoices FOR DELETE TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can view invoices" ON public.customer_invoices; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can view invoices"
+  ON public.customer_invoices FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can insert invoices" ON public.customer_invoices; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can insert invoices"
+  ON public.customer_invoices FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can update invoices" ON public.customer_invoices; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can update invoices"
+  ON public.customer_invoices FOR UPDATE TO authenticated USING (true) WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can delete invoices" ON public.customer_invoices; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can delete invoices"
+  ON public.customer_invoices FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- =========================
 -- customer_invoice_lines
 -- =========================
-CREATE TABLE public.customer_invoice_lines (
+CREATE TABLE IF NOT EXISTS public.customer_invoice_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   invoice_id UUID NOT NULL REFERENCES public.customer_invoices(id) ON DELETE CASCADE,
   shipping_entry_id UUID REFERENCES public.shipping_entries(id) ON DELETE SET NULL,
@@ -99,19 +105,23 @@ CREATE TABLE public.customer_invoice_lines (
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.customer_invoice_lines TO authenticated;
 GRANT ALL ON public.customer_invoice_lines TO service_role;
+DO $rls$ BEGIN ALTER TABLE public.customer_invoice_lines ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.customer_invoice_lines ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated can view invoice lines"
-  ON public.customer_invoice_lines FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert invoice lines"
-  ON public.customer_invoice_lines FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update invoice lines"
-  ON public.customer_invoice_lines FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated can delete invoice lines"
-  ON public.customer_invoice_lines FOR DELETE TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can view invoice lines" ON public.customer_invoice_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can view invoice lines"
+  ON public.customer_invoice_lines FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can insert invoice lines" ON public.customer_invoice_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can insert invoice lines"
+  ON public.customer_invoice_lines FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can update invoice lines" ON public.customer_invoice_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can update invoice lines"
+  ON public.customer_invoice_lines FOR UPDATE TO authenticated USING (true) WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can delete invoice lines" ON public.customer_invoice_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can delete invoice lines"
+  ON public.customer_invoice_lines FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- FK link from shipping_entries -> customer_invoices
+ALTER TABLE public.shipping_entries DROP CONSTRAINT IF EXISTS shipping_entries_invoice_fk;
 ALTER TABLE public.shipping_entries
   ADD CONSTRAINT shipping_entries_invoice_fk
   FOREIGN KEY (invoice_id) REFERENCES public.customer_invoices(id) ON DELETE SET NULL;
@@ -119,18 +129,22 @@ ALTER TABLE public.shipping_entries
 -- =========================
 -- updated_at triggers
 -- =========================
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='tg_set_updated_at' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.tg_set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END $$;
 
+DROP TRIGGER IF EXISTS trg_shipping_entries_updated ON public.shipping_entries;
 CREATE TRIGGER trg_shipping_entries_updated BEFORE UPDATE ON public.shipping_entries
   FOR EACH ROW EXECUTE FUNCTION public.tg_set_updated_at();
+DROP TRIGGER IF EXISTS trg_customer_invoices_updated ON public.customer_invoices;
 CREATE TRIGGER trg_customer_invoices_updated BEFORE UPDATE ON public.customer_invoices
   FOR EACH ROW EXECUTE FUNCTION public.tg_set_updated_at();
 
 -- =========================
 -- Auto-create shipping_entries from packaging completion
 -- =========================
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_create_shipping_entry' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_create_shipping_entry()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -157,6 +171,7 @@ BEGIN
   RETURN NEW;
 END $$;
 
+DROP TRIGGER IF EXISTS trg_packaging_completion_to_shipping ON public.packaging_completion_records;
 CREATE TRIGGER trg_packaging_completion_to_shipping
   AFTER INSERT ON public.packaging_completion_records
   FOR EACH ROW EXECUTE FUNCTION public.fn_create_shipping_entry();
@@ -181,6 +196,7 @@ ON CONFLICT (packaging_completion_id) DO NOTHING;
 -- =========================
 -- Invoice numbering helper
 -- =========================
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='next_invoice_number' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.next_invoice_number()
 RETURNS TEXT LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE n BIGINT;

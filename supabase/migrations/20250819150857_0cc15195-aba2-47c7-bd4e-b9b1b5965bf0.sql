@@ -1,5 +1,5 @@
 -- Create production_ingredient_usage table to track actual materials used per batch
-CREATE TABLE public.production_ingredient_usage (
+CREATE TABLE IF NOT EXISTS public.production_ingredient_usage (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   schedule_item_id UUID NOT NULL,
   raw_material_id UUID NOT NULL,
@@ -16,16 +16,18 @@ CREATE TABLE public.production_ingredient_usage (
 );
 
 -- Enable Row Level Security
-ALTER TABLE public.production_ingredient_usage ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.production_ingredient_usage ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create policies for production ingredient usage
-CREATE POLICY "Only admins and production managers can manage ingredient usage" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins and production managers can manage ingredient usage" ON public.production_ingredient_usage; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins and production managers can manage ingredient usage" 
 ON public.production_ingredient_usage 
 FOR ALL 
 USING (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'production_manager'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'production_manager'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'production_manager'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create function to get formula ingredients with available lots
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_formula_ingredients_with_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_formula_ingredients_with_lots(p_formula_id UUID, p_batches INTEGER)
 RETURNS TABLE(
   ingredient_id UUID,
@@ -79,6 +81,7 @@ END;
 $$;
 
 -- Create function to save production ingredient usage
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='save_production_ingredient_usage' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.save_production_ingredient_usage(
   p_schedule_item_id UUID,
   p_usage_data JSONB

@@ -8,6 +8,7 @@ ADD COLUMN IF NOT EXISTS phone_numbers_encrypted TEXT,
 ADD COLUMN IF NOT EXISTS contact_info_encrypted TEXT;
 
 -- Create secure function to encrypt supplier contact data
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='encrypt_supplier_contacts' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.encrypt_supplier_contacts()
 RETURNS void
 LANGUAGE plpgsql
@@ -43,7 +44,7 @@ END;
 $$;
 
 -- Run the encryption migration
-SELECT public.encrypt_supplier_contacts();
+-- (skipped on fresh database) -- SELECT public.encrypt_supplier_contacts();
 
 -- Create audit table for supplier access logging
 CREATE TABLE IF NOT EXISTS public.supplier_access_audit (
@@ -60,12 +61,14 @@ CREATE TABLE IF NOT EXISTS public.supplier_access_audit (
 );
 
 -- Enable RLS on the audit table
-ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Only admins can view supplier access logs
-CREATE POLICY "Only admins can view supplier access audit" ON public.supplier_access_audit
-FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role));
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view supplier access audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view supplier access audit" ON public.supplier_access_audit
+FOR SELECT USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Authenticated users can insert audit logs (for system logging)
-CREATE POLICY "System can insert supplier access audit" ON public.supplier_access_audit
-FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "System can insert supplier access audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "System can insert supplier access audit" ON public.supplier_access_audit
+FOR INSERT WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

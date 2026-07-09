@@ -1,4 +1,5 @@
 -- Create a manual function to check all inventory thresholds and generate alerts
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='check_inventory_thresholds_manual' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.check_inventory_thresholds_manual()
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -63,7 +64,7 @@ BEGIN
             AND acknowledged = false;
 
             -- Insert new alert
-            INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
                 alert_type,
                 severity,
                 details
@@ -82,7 +83,7 @@ BEGIN
                     'triggered_by', 'MANUAL',
                     'triggered_at', now()
                 )
-            );
+            ); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
             
             alerts_created := alerts_created + 1;
         END IF;
@@ -90,7 +91,7 @@ BEGIN
 
     RETURN CONCAT('Created ', alerts_created, ' new inventory alerts');
 END;
-$function$
+$function$;
 
 -- Run the function to generate missing alerts
 SELECT public.check_inventory_thresholds_manual() as result;

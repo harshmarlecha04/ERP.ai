@@ -1,6 +1,7 @@
 -- Fix search_path security warnings for newly created functions
 
 -- Update find_raw_material_by_name with search_path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='find_raw_material_by_name' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.find_raw_material_by_name(
   p_recipe_material_name TEXT
 ) RETURNS UUID 
@@ -44,6 +45,7 @@ END;
 $$;
 
 -- Update get_material_requirements_by_date_range with search_path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_material_requirements_by_date_range' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_material_requirements_by_date_range(
   p_start_date DATE,
   p_end_date DATE
@@ -185,6 +187,7 @@ END;
 $$;
 
 -- Update get_unmatched_recipe_materials with search_path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_unmatched_recipe_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_unmatched_recipe_materials(
   p_start_date DATE,
   p_end_date DATE

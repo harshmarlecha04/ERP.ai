@@ -8,6 +8,7 @@ ALTER TABLE public.order_headers
   ADD COLUMN IF NOT EXISTS rejection_reason text;
 
 -- Submit PO for approval: customer portal calls this after creating the order.
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='submit_po_for_approval' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.submit_po_for_approval(_order_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -54,6 +55,7 @@ END;
 $$;
 
 -- Decide PO approval: approve or reject. Optional formula assignments per line.
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='decide_po_approval' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.decide_po_approval(
   _order_id uuid,
   _decision text,

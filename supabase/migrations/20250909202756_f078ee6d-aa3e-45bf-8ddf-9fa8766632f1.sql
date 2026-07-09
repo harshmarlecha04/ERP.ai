@@ -18,30 +18,34 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 
 -- Update RLS policies for profiles to be more restrictive
 -- Drop ALL existing policies first
-DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
-DROP POLICY IF EXISTS "HR managers can view all profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Only admins can delete profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Users can only create their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can only update their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can only create their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can only update their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create new restrictive policies for profiles (public display data only)
-CREATE POLICY "Users can view basic profile display info" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view basic profile display info" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view basic profile display info" 
 ON public.profiles FOR SELECT 
-USING (true); -- Basic display info like display_name, job_title can be public
+USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$; -- Basic display info like display_name, job_title can be public
 
-CREATE POLICY "Users can update their own profile display info" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can update their own profile display info" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can update their own profile display info" 
 ON public.profiles FOR UPDATE 
 USING (id = auth.uid()) 
-WITH CHECK (id = auth.uid());
+WITH CHECK (id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can delete profiles" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can delete profiles" 
 ON public.profiles FOR DELETE 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can create their own profile" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can create their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can create their own profile" 
 ON public.profiles FOR INSERT 
-WITH CHECK (id = auth.uid());
+WITH CHECK (id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Ensure employee_sensitive_data table has all necessary fields for PII
 -- This table should contain the sensitive information previously in profiles
@@ -52,6 +56,7 @@ ALTER TABLE public.employee_sensitive_data ADD COLUMN IF NOT EXISTS job_title TE
 ALTER TABLE public.employee_sensitive_data ADD COLUMN IF NOT EXISTS display_name TEXT;
 
 -- Create secure functions for accessing user display information with proper logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_user_display_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_user_display_info(_user_ids uuid[] DEFAULT NULL)
 RETURNS TABLE(
     id uuid,
@@ -89,6 +94,7 @@ END;
 $$;
 
 -- Create function for team member basic info (for managers)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_team_member_basic_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_team_member_basic_info(_manager_id uuid DEFAULT NULL)
 RETURNS TABLE(
     id uuid,
@@ -140,6 +146,7 @@ END;
 $$;
 
 -- Create secure function for HR to access all profiles with approval workflow
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_profiles_hr_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_profiles_hr_access(_profile_id uuid DEFAULT NULL)
 RETURNS TABLE(
     id uuid,

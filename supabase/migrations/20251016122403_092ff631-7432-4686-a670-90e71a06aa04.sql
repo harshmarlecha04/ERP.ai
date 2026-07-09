@@ -69,56 +69,67 @@ JOIN raw_materials rm ON rm.id = id.raw_material_id
 GROUP BY id.raw_material_id, rm.code, rm.name, usage_month;
 
 -- Enable RLS policies
-ALTER TABLE report_subscriptions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE demand_forecasts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE safety_stock_recommendations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE demand_anomalies ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE report_subscriptions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE demand_forecasts ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE safety_stock_recommendations ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE demand_anomalies ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS Policies for report_subscriptions
-CREATE POLICY "Users can view their own subscriptions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own subscriptions" ON report_subscriptions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own subscriptions"
   ON report_subscriptions FOR SELECT
-  USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin'));
+  USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can create their own subscriptions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can create their own subscriptions" ON report_subscriptions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can create their own subscriptions"
   ON report_subscriptions FOR INSERT
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can update their own subscriptions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can update their own subscriptions" ON report_subscriptions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can update their own subscriptions"
   ON report_subscriptions FOR UPDATE
-  USING (user_id = auth.uid());
+  USING (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can delete their own subscriptions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can delete their own subscriptions" ON report_subscriptions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can delete their own subscriptions"
   ON report_subscriptions FOR DELETE
-  USING (user_id = auth.uid());
+  USING (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policies for demand_forecasts
-CREATE POLICY "Authenticated users can view forecasts"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view forecasts" ON demand_forecasts; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view forecasts"
   ON demand_forecasts FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can manage forecasts"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can manage forecasts" ON demand_forecasts; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can manage forecasts"
   ON demand_forecasts FOR ALL
-  USING (has_role(auth.uid(), 'admin'));
+  USING (has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policies for safety_stock_recommendations
-CREATE POLICY "Authenticated users can view safety stock recommendations"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view safety stock recommendations" ON safety_stock_recommendations; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view safety stock recommendations"
   ON safety_stock_recommendations FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can manage safety stock recommendations"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can manage safety stock recommendations" ON safety_stock_recommendations; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can manage safety stock recommendations"
   ON safety_stock_recommendations FOR ALL
-  USING (has_role(auth.uid(), 'admin'));
+  USING (has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policies for demand_anomalies
-CREATE POLICY "Authenticated users can view demand anomalies"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view demand anomalies" ON demand_anomalies; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view demand anomalies"
   ON demand_anomalies FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can acknowledge anomalies"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can acknowledge anomalies" ON demand_anomalies; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can acknowledge anomalies"
   ON demand_anomalies FOR UPDATE
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (acknowledged = true AND acknowledged_by = auth.uid());
+  WITH CHECK (acknowledged = true AND acknowledged_by = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can create anomalies"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can create anomalies" ON demand_anomalies; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can create anomalies"
   ON demand_anomalies FOR INSERT
-  WITH CHECK (has_role(auth.uid(), 'admin'));
+  WITH CHECK (has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

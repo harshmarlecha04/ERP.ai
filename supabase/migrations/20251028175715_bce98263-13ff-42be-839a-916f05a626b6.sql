@@ -1,4 +1,5 @@
 -- Fix search_path for delete_session_inventory_records function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='delete_session_inventory_records' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION delete_session_inventory_records()
 RETURNS TRIGGER AS $$
 BEGIN

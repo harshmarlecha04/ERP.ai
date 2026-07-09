@@ -1,4 +1,5 @@
 -- Create function to sync suppliers from raw_materials to suppliers table
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='sync_suppliers_from_inventory' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION sync_suppliers_from_inventory()
 RETURNS jsonb
 LANGUAGE plpgsql

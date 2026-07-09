@@ -6,8 +6,8 @@ ALTER TABLE public.raw_materials
   ADD COLUMN IF NOT EXISTS code_ci citext GENERATED ALWAYS AS (code::citext) STORED;
 
 -- Add unique constraint on case-insensitive code
-ALTER TABLE public.raw_materials 
-  ADD CONSTRAINT IF NOT EXISTS raw_materials_code_ci_key UNIQUE (code_ci);
+ALTER TABLE public.raw_materials DROP CONSTRAINT IF EXISTS raw_materials_code_ci_key;
+ALTER TABLE public.raw_materials ADD CONSTRAINT raw_materials_code_ci_key UNIQUE (code_ci);
 
 -- Rename existing columns to match expected schema
 DO $$
@@ -28,6 +28,7 @@ EXCEPTION
 END $$;
 
 -- Create atomic upsert function for materials with lots
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='upsert_raw_material_with_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.upsert_raw_material_with_lots(
   p_material jsonb
 ) RETURNS jsonb

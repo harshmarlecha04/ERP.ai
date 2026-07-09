@@ -1,6 +1,7 @@
 -- Fix the formula requirements function to handle the correct JSON structure
 DROP FUNCTION IF EXISTS public.fn_formula_requirements(uuid, integer);
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_formula_requirements' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_formula_requirements(p_formula_id uuid, p_batches integer)
 RETURNS TABLE(ingredient_id uuid, ingredient_name text, required_kg numeric)
 LANGUAGE plpgsql

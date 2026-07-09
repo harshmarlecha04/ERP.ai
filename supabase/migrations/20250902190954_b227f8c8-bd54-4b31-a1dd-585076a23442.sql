@@ -4,7 +4,7 @@
 DROP VIEW IF EXISTS public.safe_profiles CASCADE;
 
 -- Create a clean safe_profiles view that only uses auth.uid() (which is not flagged as SECURITY DEFINER)
-CREATE VIEW public.safe_profiles AS
+CREATE OR REPLACE VIEW public.safe_profiles AS
 SELECT 
   p.id,
   -- Show data based on user's own access or public consent only
@@ -30,7 +30,7 @@ SELECT
 FROM public.profiles p;
 
 -- Log the fix completion
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -44,4 +44,4 @@ INSERT INTO public.security_alerts (
     'note', 'relies_only_on_auth_uid_and_public_consent_settings'
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

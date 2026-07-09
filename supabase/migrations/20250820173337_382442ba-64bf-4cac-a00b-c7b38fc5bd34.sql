@@ -1,4 +1,5 @@
 -- Fix the database function to use the correct column name 'expires_on' instead of 'expiry_date'
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='create_raw_material_with_lots_v2' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.create_raw_material_with_lots_v2(p_code text, p_name text, p_supplier text DEFAULT NULL::text, p_unit_of_measure text DEFAULT 'kg'::text, p_lots jsonb DEFAULT '[]'::jsonb, p_idempotency_key uuid DEFAULT NULL::uuid)
  RETURNS jsonb
  LANGUAGE plpgsql

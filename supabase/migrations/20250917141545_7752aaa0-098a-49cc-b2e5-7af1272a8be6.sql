@@ -1,7 +1,8 @@
 -- Fix the policy conflict and create the enhanced function
-DROP POLICY IF EXISTS "Authenticated users can manage usage sessions" ON public.production_ingredient_usage_sessions;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage usage sessions" ON public.production_ingredient_usage_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Enhanced auto-populate function with transaction safety, idempotency, and overwrite protection
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='auto_populate_production_ingredients_safe' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.auto_populate_production_ingredients_safe(
   p_schedule_item_id uuid, 
   p_formula_id uuid, 
@@ -112,7 +113,7 @@ BEGIN
     END IF;
     
     -- Generate session checksum for integrity
-    v_session_checksum := encode(digest(
+    v_session_checksum := encode(extensions.digest(
       p_schedule_item_id::text || p_formula_id::text || p_batches::text || now()::text, 
       'sha256'
     ), 'hex');
@@ -304,11 +305,12 @@ CREATE INDEX IF NOT EXISTS idx_usage_sessions_idempotency ON public.production_i
 CREATE INDEX IF NOT EXISTS idx_usage_checksum ON public.production_ingredient_usage(session_checksum);
 
 -- Enable RLS on new table
-ALTER TABLE public.production_ingredient_usage_sessions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.production_ingredient_usage_sessions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create RLS policy for sessions table
-CREATE POLICY "users_can_manage_usage_sessions" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "users_can_manage_usage_sessions" ON public.production_ingredient_usage_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "users_can_manage_usage_sessions" 
 ON public.production_ingredient_usage_sessions
 FOR ALL
 USING (auth.uid() IS NOT NULL)
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

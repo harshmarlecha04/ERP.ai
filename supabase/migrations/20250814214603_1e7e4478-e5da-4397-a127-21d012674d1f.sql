@@ -38,6 +38,7 @@ ALTER VIEW public.secure_profiles SET (security_barrier = true);
 
 -- 3. Add row-level encryption for the most sensitive fields
 -- Create encrypted email storage function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='encrypt_sensitive_field' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.encrypt_sensitive_field(field_value text)
 RETURNS text
 LANGUAGE plpgsql
@@ -64,6 +65,7 @@ END;
 $$;
 
 -- 4. Create function to validate profile access with IP restrictions
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_profile_access_with_ip' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_profile_access_with_ip(_profile_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -107,6 +109,7 @@ END;
 $$;
 
 -- 5. Update the profile access function with additional security checks
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_profile_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_profile_secure(_viewer_id uuid, _profile_id uuid, _access_type text DEFAULT 'view'::text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -203,6 +206,7 @@ END;
 $$;
 
 -- 6. Create emergency profile lockdown function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_lockdown_profiles' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_lockdown_profiles()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -236,6 +240,7 @@ END;
 $$;
 
 -- 7. Create function to restore normal access after emergency
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='restore_normal_profile_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.restore_normal_profile_access()
 RETURNS boolean
 LANGUAGE plpgsql

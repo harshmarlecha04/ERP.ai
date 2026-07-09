@@ -1,4 +1,5 @@
 -- Fix the audit function to handle null user_id during signup
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_user_activity()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -99,14 +100,17 @@ DROP TRIGGER IF EXISTS audit_profiles ON public.profiles;
 DROP TRIGGER IF EXISTS audit_formulas ON public.formulas;
 
 -- Create safe audit triggers that won't break signup
+DROP TRIGGER IF EXISTS audit_user_roles ON public.user_roles;
 CREATE TRIGGER audit_user_roles
     AFTER INSERT OR UPDATE OR DELETE ON public.user_roles
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();
 
+DROP TRIGGER IF EXISTS audit_profiles ON public.profiles;
 CREATE TRIGGER audit_profiles  
     AFTER INSERT OR UPDATE OR DELETE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();
 
+DROP TRIGGER IF EXISTS audit_formulas ON public.formulas;
 CREATE TRIGGER audit_formulas
     AFTER INSERT OR UPDATE OR DELETE ON public.formulas  
     FOR EACH ROW EXECUTE FUNCTION public.log_user_activity();

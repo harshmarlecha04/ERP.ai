@@ -11,7 +11,7 @@
 -- This view shows current packaging inventory balances
 DROP VIEW IF EXISTS public.v_packaging_balances CASCADE;
 
-CREATE VIEW public.v_packaging_balances
+CREATE OR REPLACE VIEW public.v_packaging_balances
 WITH (security_invoker = true)
 AS
 SELECT 
@@ -35,7 +35,7 @@ GROUP BY i.id, i.category, i.item_name, i.description, i.sku, i.uom, i.location,
 -- This view shows packaging movement history
 DROP VIEW IF EXISTS public.v_packaging_history CASCADE;
 
-CREATE VIEW public.v_packaging_history
+CREATE OR REPLACE VIEW public.v_packaging_history
 WITH (security_invoker = true)
 AS
 SELECT 

@@ -2,12 +2,13 @@
 -- Replace the existing formula RLS policy with strict security controls
 
 -- First, drop the existing policy that may allow broad business hours access
-DROP POLICY IF EXISTS "business_hours_formula_access" ON public.formulas;
-DROP POLICY IF EXISTS "Business hours enhanced formula access" ON public.formulas;
-DROP POLICY IF EXISTS "Unrestricted admin formula access v2" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "business_hours_formula_access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Business hours enhanced formula access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Unrestricted admin formula access v2" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create new SECURE formula access policy with NO business hours exceptions for sensitive data
-CREATE POLICY "secure_formula_access_policy" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "secure_formula_access_policy" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "secure_formula_access_policy" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -34,9 +35,10 @@ USING (
             has_role(auth.uid(), 'production_manager'::app_role)
         ))
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create additional security function to validate formula access attempts
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_attempt' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_access_attempt(_user_id uuid, _formula_id uuid, _access_type text DEFAULT 'read')
 RETURNS boolean
 LANGUAGE plpgsql
@@ -125,6 +127,7 @@ END;
 $$;
 
 -- Update the get_accessible_formulas function with enhanced security
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas()
 RETURNS TABLE(
     id uuid, code text, name text, formula_code text, 
@@ -200,6 +203,7 @@ END;
 $$;
 
 -- Create emergency formula access lockdown function (admin only)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_formula_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_formula_lockdown()
 RETURNS void
 LANGUAGE plpgsql

@@ -2,10 +2,11 @@
 -- This addresses the issue where any authenticated user could access standard formulas during business hours
 
 -- Drop the vulnerable RLS policy
-DROP POLICY IF EXISTS "secure_formula_access_policy" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "secure_formula_access_policy" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create new strict access policy with no business hours exception for unauthorized users
-CREATE POLICY "strict_formula_access_policy" ON public.formulas
+DO $pol$ BEGIN DROP POLICY IF EXISTS "strict_formula_access_policy" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "strict_formula_access_policy" ON public.formulas
 FOR SELECT TO authenticated
 USING (
     (NOT is_deleted) AND (
@@ -27,9 +28,10 @@ USING (
             has_role(auth.uid(), 'production_manager'::app_role)
         ))
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Update the get_accessible_formulas function to enforce strict access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid DEFAULT auth.uid())
 RETURNS TABLE(
     id uuid, code text, name text, default_batch_size_kg numeric,
@@ -128,6 +130,7 @@ END;
 $$;
 
 -- Create function to validate individual formula access with strict controls
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_strict' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_access_strict(_user_id uuid, _formula_id uuid, _access_type text DEFAULT 'view')
 RETURNS boolean
 LANGUAGE plpgsql
@@ -182,6 +185,7 @@ END;
 $$;
 
 -- Create a function to check if emergency lockdown is active
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='is_emergency_lockdown_active' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.is_emergency_lockdown_active()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -199,7 +203,7 @@ END;
 $$;
 
 -- Add a security alert for this critical fix
-INSERT INTO public.security_alerts (alert_type, severity, details)
+DO $aud$ BEGIN INSERT INTO public.security_alerts (alert_type, severity, details)
 VALUES (
     'formula_access_vulnerability_fixed',
     'critical',
@@ -211,4 +215,4 @@ VALUES (
         'affected_security_levels', ARRAY['standard', 'confidential', 'trade_secret'],
         'timestamp', now()
     )
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

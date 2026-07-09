@@ -26,21 +26,24 @@ CREATE TABLE IF NOT EXISTS public.trade_secret_access_sessions_enhanced (
 );
 
 -- Enable RLS on the new sessions table
-ALTER TABLE public.trade_secret_access_sessions_enhanced ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.trade_secret_access_sessions_enhanced ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create RLS policies for the enhanced sessions table
-CREATE POLICY "Users can view their own trade secret sessions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own trade secret sessions" ON public.trade_secret_access_sessions_enhanced; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own trade secret sessions"
 ON public.trade_secret_access_sessions_enhanced
 FOR SELECT
-USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin'));
+USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can manage trade secret sessions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can manage trade secret sessions" ON public.trade_secret_access_sessions_enhanced; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can manage trade secret sessions"
 ON public.trade_secret_access_sessions_enhanced
 FOR ALL
 USING (has_role(auth.uid(), 'admin'))
-WITH CHECK (has_role(auth.uid(), 'admin'));
+WITH CHECK (has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Enhanced formula access validation function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_access_secure(
     _user_id uuid,
     _formula_id uuid,
@@ -157,18 +160,20 @@ END;
 $$;
 
 -- Update the existing RLS policy to use the enhanced validation
-DROP POLICY IF EXISTS "strict_formula_access_policy" ON public.formulas;
-DROP POLICY IF EXISTS "enhanced_secure_formula_access_policy" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "strict_formula_access_policy" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "enhanced_secure_formula_access_policy" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "enhanced_secure_formula_access_policy"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "enhanced_secure_formula_access_policy" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "enhanced_secure_formula_access_policy"
 ON public.formulas
 FOR SELECT
 USING (
     NOT is_deleted AND 
     public.validate_formula_access_secure(auth.uid(), id, 'view')
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create function to request trade secret access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='request_trade_secret_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.request_trade_secret_access(
     _formula_id uuid,
     _justification text,
@@ -217,7 +222,7 @@ BEGIN
     END IF;
     
     -- Generate session token and set expiry (24 hours for trade secrets)
-    session_token := encode(gen_random_bytes(32), 'hex');
+    session_token := encode(extensions.gen_random_bytes(32), 'hex');
     expires_at := now() + interval '24 hours';
     
     -- Create access request session
@@ -273,6 +278,7 @@ END;
 $$;
 
 -- Create function for admins to approve trade secret access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='approve_trade_secret_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.approve_trade_secret_access(
     _session_id uuid,
     _approved boolean DEFAULT true,
@@ -365,6 +371,7 @@ END;
 $$;
 
 -- Create function to clean up expired sessions
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='cleanup_expired_trade_secret_sessions_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.cleanup_expired_trade_secret_sessions_enhanced()
 RETURNS void
 LANGUAGE plpgsql

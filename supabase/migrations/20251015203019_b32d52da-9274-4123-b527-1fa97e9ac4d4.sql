@@ -1,7 +1,7 @@
 -- Phase 1: Customer Order Management Database Schema
 
 -- Create customers table
-CREATE TABLE public.customers (
+CREATE TABLE IF NOT EXISTS public.customers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_name text UNIQUE NOT NULL,
   customer_code text UNIQUE NOT NULL,
@@ -14,27 +14,31 @@ CREATE TABLE public.customers (
 );
 
 -- Enable RLS on customers
-ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "Authenticated users can view customers"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view customers"
   ON public.customers FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can create customers"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can create customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can create customers"
   ON public.customers FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can update customers"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can update customers"
   ON public.customers FOR UPDATE
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can delete customers"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can delete customers"
   ON public.customers FOR DELETE
-  USING (has_role(auth.uid(), 'admin'::app_role));
+  USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create customer_orders table
-CREATE TABLE public.customer_orders (
+CREATE TABLE IF NOT EXISTS public.customer_orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number text UNIQUE NOT NULL,
   customer_id uuid REFERENCES public.customers(id) ON DELETE RESTRICT NOT NULL,
@@ -58,27 +62,31 @@ CREATE TABLE public.customer_orders (
 );
 
 -- Enable RLS on customer_orders
-ALTER TABLE public.customer_orders ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.customer_orders ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "Authenticated users can view orders"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view orders" ON public.customer_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view orders"
   ON public.customer_orders FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can create orders"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can create orders" ON public.customer_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can create orders"
   ON public.customer_orders FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can update orders"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update orders" ON public.customer_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can update orders"
   ON public.customer_orders FOR UPDATE
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can delete orders"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete orders" ON public.customer_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can delete orders"
   ON public.customer_orders FOR DELETE
-  USING (has_role(auth.uid(), 'admin'::app_role));
+  USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create order_production_batches linking table
-CREATE TABLE public.order_production_batches (
+CREATE TABLE IF NOT EXISTS public.order_production_batches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_order_id uuid REFERENCES public.customer_orders(id) ON DELETE CASCADE NOT NULL,
   production_schedule_item_id uuid REFERENCES public.production_schedule_items(id) ON DELETE CASCADE NOT NULL,
@@ -90,15 +98,16 @@ CREATE TABLE public.order_production_batches (
 );
 
 -- Enable RLS on order_production_batches
-ALTER TABLE public.order_production_batches ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.order_production_batches ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "Authenticated users can manage order batches"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage order batches" ON public.order_production_batches; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage order batches"
   ON public.order_production_batches FOR ALL
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create batch_stage_tracking table
-CREATE TABLE public.batch_stage_tracking (
+CREATE TABLE IF NOT EXISTS public.batch_stage_tracking (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   production_schedule_item_id uuid REFERENCES public.production_schedule_items(id) ON DELETE CASCADE NOT NULL,
   stage text NOT NULL,
@@ -120,12 +129,13 @@ CREATE TABLE public.batch_stage_tracking (
 );
 
 -- Enable RLS on batch_stage_tracking
-ALTER TABLE public.batch_stage_tracking ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.batch_stage_tracking ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "Authenticated users can manage stage tracking"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage stage tracking" ON public.batch_stage_tracking; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage stage tracking"
   ON public.batch_stage_tracking FOR ALL
   USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Add columns to formulas table
 ALTER TABLE public.formulas 
@@ -141,6 +151,7 @@ ALTER TABLE public.production_schedule_items
   ADD COLUMN IF NOT EXISTS current_stage text DEFAULT 'scheduled';
 
 -- Create function to auto-generate order numbers
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='generate_order_number' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION generate_order_number()
 RETURNS text
 LANGUAGE plpgsql
@@ -172,6 +183,7 @@ END;
 $$;
 
 -- Create function to calculate batches needed for an order
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='calculate_batches_needed' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION calculate_batches_needed(
   p_formula_id uuid,
   p_bottles_ordered integer,
@@ -220,6 +232,7 @@ END;
 $$;
 
 -- Create trigger to auto-generate order numbers
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='set_order_number' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION set_order_number()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -234,12 +247,14 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trigger_set_order_number ON public.customer_orders;
 CREATE TRIGGER trigger_set_order_number
   BEFORE INSERT ON public.customer_orders
   FOR EACH ROW
   EXECUTE FUNCTION set_order_number();
 
 -- Create trigger to update updated_at timestamp
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_updated_at_column' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -250,22 +265,24 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS update_customers_updated_at ON public.customers;
 CREATE TRIGGER update_customers_updated_at
   BEFORE UPDATE ON public.customers
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_customer_orders_updated_at ON public.customer_orders;
 CREATE TRIGGER update_customer_orders_updated_at
   BEFORE UPDATE ON public.customer_orders
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
 -- Create indexes for better performance
-CREATE INDEX idx_customer_orders_customer_id ON public.customer_orders(customer_id);
-CREATE INDEX idx_customer_orders_formula_id ON public.customer_orders(formula_id);
-CREATE INDEX idx_customer_orders_status ON public.customer_orders(status);
-CREATE INDEX idx_customer_orders_due_date ON public.customer_orders(due_date);
-CREATE INDEX idx_order_production_batches_order_id ON public.order_production_batches(customer_order_id);
-CREATE INDEX idx_order_production_batches_schedule_item_id ON public.order_production_batches(production_schedule_item_id);
-CREATE INDEX idx_batch_stage_tracking_schedule_item_id ON public.batch_stage_tracking(production_schedule_item_id);
-CREATE INDEX idx_batch_stage_tracking_stage ON public.batch_stage_tracking(stage);
+CREATE INDEX IF NOT EXISTS idx_customer_orders_customer_id ON public.customer_orders(customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_orders_formula_id ON public.customer_orders(formula_id);
+CREATE INDEX IF NOT EXISTS idx_customer_orders_status ON public.customer_orders(status);
+CREATE INDEX IF NOT EXISTS idx_customer_orders_due_date ON public.customer_orders(due_date);
+CREATE INDEX IF NOT EXISTS idx_order_production_batches_order_id ON public.order_production_batches(customer_order_id);
+CREATE INDEX IF NOT EXISTS idx_order_production_batches_schedule_item_id ON public.order_production_batches(production_schedule_item_id);
+CREATE INDEX IF NOT EXISTS idx_batch_stage_tracking_schedule_item_id ON public.batch_stage_tracking(production_schedule_item_id);
+CREATE INDEX IF NOT EXISTS idx_batch_stage_tracking_stage ON public.batch_stage_tracking(stage);

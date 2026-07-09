@@ -3,6 +3,7 @@
 ALTER TABLE public.formula_access_audit DROP CONSTRAINT IF EXISTS formula_access_audit_access_type_check;
 
 -- Add a new, more comprehensive constraint that allows all access types used in the system
+ALTER TABLE public.formula_access_audit DROP CONSTRAINT IF EXISTS formula_access_audit_access_type_check;
 ALTER TABLE public.formula_access_audit ADD CONSTRAINT formula_access_audit_access_type_check 
 CHECK (access_type IN (
   'view', 'edit', 'create', 'update', 'delete', 'admin',

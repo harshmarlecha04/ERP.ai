@@ -1,3 +1,32 @@
+-- Notifications table (was created outside the migration chain originally).
+-- Schema matches the frontend's AppNotification interface.
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  type text NOT NULL,
+  title text NOT NULL,
+  message text,
+  action_url text,
+  read boolean NOT NULL DEFAULT false,
+  data jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users see own notifications" ON public.notifications;
+CREATE POLICY "Users see own notifications" ON public.notifications
+  FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Users update own notifications" ON public.notifications;
+CREATE POLICY "Users update own notifications" ON public.notifications
+  FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Users delete own notifications" ON public.notifications;
+CREATE POLICY "Users delete own notifications" ON public.notifications
+  FOR DELETE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Service can insert notifications" ON public.notifications;
+CREATE POLICY "Service can insert notifications" ON public.notifications
+  FOR INSERT WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created
+  ON public.notifications(user_id, created_at DESC);
+
 
 -- ---------- AUDIT EVENTS ----------
 CREATE TABLE IF NOT EXISTS public.audit_events (
@@ -14,17 +43,19 @@ CREATE TABLE IF NOT EXISTS public.audit_events (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON public.audit_events(entity_type, entity_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_actor ON public.audit_events(actor_id, created_at DESC);
+DO $rls$ BEGIN ALTER TABLE public.audit_events ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.audit_events ENABLE ROW LEVEL SECURITY;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated read audit" ON public.audit_events; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated read audit" ON public.audit_events; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated read audit" ON public.audit_events
+  FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Authenticated read audit" ON public.audit_events;
-CREATE POLICY "Authenticated read audit" ON public.audit_events
-  FOR SELECT TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated insert audit" ON public.audit_events; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated insert audit" ON public.audit_events; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated insert audit" ON public.audit_events
+  FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Authenticated insert audit" ON public.audit_events;
-CREATE POLICY "Authenticated insert audit" ON public.audit_events
-  FOR INSERT TO authenticated WITH CHECK (true);
-
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_record_audit' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_record_audit()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -64,10 +95,11 @@ CREATE TABLE IF NOT EXISTS public.notification_preferences (
   categories JSONB NOT NULL DEFAULT '{"po":true,"qa":true,"inventory":true,"mention":true,"ai":true,"task":true}'::jsonb,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users manage prefs" ON public.notification_preferences;
-CREATE POLICY "Users manage prefs" ON public.notification_preferences
-  FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+DO $rls$ BEGIN ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users manage prefs" ON public.notification_preferences; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users manage prefs" ON public.notification_preferences; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users manage prefs" ON public.notification_preferences
+  FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- ---------- TASKS ----------
 DO $$ BEGIN
@@ -97,28 +129,32 @@ CREATE TABLE IF NOT EXISTS public.tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee_status ON public.tasks(assignee_id, status, due_at);
 CREATE INDEX IF NOT EXISTS idx_tasks_related ON public.tasks(related_entity_type, related_entity_id);
+DO $rls$ BEGIN ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated read tasks" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated read tasks" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated read tasks" ON public.tasks
+  FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Authenticated read tasks" ON public.tasks;
-CREATE POLICY "Authenticated read tasks" ON public.tasks
-  FOR SELECT TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated insert tasks" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated insert tasks" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated insert tasks" ON public.tasks
+  FOR INSERT TO authenticated WITH CHECK (created_by = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Authenticated insert tasks" ON public.tasks;
-CREATE POLICY "Authenticated insert tasks" ON public.tasks
-  FOR INSERT TO authenticated WITH CHECK (created_by = auth.uid());
-
-DROP POLICY IF EXISTS "Assignee creator admin update" ON public.tasks;
-CREATE POLICY "Assignee creator admin update" ON public.tasks
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Assignee creator admin update" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Assignee creator admin update" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Assignee creator admin update" ON public.tasks
   FOR UPDATE TO authenticated
   USING (assignee_id = auth.uid() OR created_by = auth.uid() OR public.has_role(auth.uid(),'admin'))
-  WITH CHECK (assignee_id = auth.uid() OR created_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
+  WITH CHECK (assignee_id = auth.uid() OR created_by = auth.uid() OR public.has_role(auth.uid(),'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Creator admin delete" ON public.tasks;
-CREATE POLICY "Creator admin delete" ON public.tasks
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Creator admin delete" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Creator admin delete" ON public.tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Creator admin delete" ON public.tasks
   FOR DELETE TO authenticated
-  USING (created_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
+  USING (created_by = auth.uid() OR public.has_role(auth.uid(),'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
+DROP TRIGGER IF EXISTS trg_tasks_updated_at ON public.tasks;
 DROP TRIGGER IF EXISTS trg_tasks_updated_at ON public.tasks;
 CREATE TRIGGER trg_tasks_updated_at
   BEFORE UPDATE ON public.tasks
@@ -131,6 +167,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_notify_task_assignment' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_notify_task_assignment()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -154,6 +191,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_tasks_notify_assignment ON public.tasks;
+DROP TRIGGER IF EXISTS trg_tasks_notify_assignment ON public.tasks;
 CREATE TRIGGER trg_tasks_notify_assignment
   AFTER INSERT OR UPDATE OF assignee_id ON public.tasks
   FOR EACH ROW EXECUTE FUNCTION public.fn_notify_task_assignment();
@@ -170,17 +208,20 @@ CREATE TABLE IF NOT EXISTS public.mentions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_mentions_user ON public.mentions(mentioned_user_id, created_at DESC);
-ALTER TABLE public.mentions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.mentions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-DROP POLICY IF EXISTS "Read own mentions" ON public.mentions;
-CREATE POLICY "Read own mentions" ON public.mentions
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Read own mentions" ON public.mentions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Read own mentions" ON public.mentions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Read own mentions" ON public.mentions
   FOR SELECT TO authenticated
-  USING (mentioned_user_id = auth.uid() OR mentioned_by = auth.uid());
+  USING (mentioned_user_id = auth.uid() OR mentioned_by = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Insert mentions" ON public.mentions;
-CREATE POLICY "Insert mentions" ON public.mentions
-  FOR INSERT TO authenticated WITH CHECK (mentioned_by = auth.uid());
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Insert mentions" ON public.mentions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Insert mentions" ON public.mentions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Insert mentions" ON public.mentions
+  FOR INSERT TO authenticated WITH CHECK (mentioned_by = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_notify_mention' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_notify_mention()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -199,6 +240,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_mentions_notify ON public.mentions;
 DROP TRIGGER IF EXISTS trg_mentions_notify ON public.mentions;
 CREATE TRIGGER trg_mentions_notify
   AFTER INSERT ON public.mentions

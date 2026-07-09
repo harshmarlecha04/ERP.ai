@@ -1,6 +1,7 @@
 -- Create a secure RPC function for deleting formulas
 -- This bypasses RLS complexity and handles permissions internally
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='delete_formula_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.delete_formula_secure(
   p_formula_id uuid
 )

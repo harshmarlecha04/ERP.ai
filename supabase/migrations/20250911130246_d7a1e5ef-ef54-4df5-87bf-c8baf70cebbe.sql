@@ -2,22 +2,24 @@
 -- Current "USING condition: false" creates security risks if bypassed or misconfigured
 
 -- Drop the dangerous blanket denial policy
-DROP POLICY IF EXISTS "Only secure function access to sensitive data" ON public.employee_sensitive_data;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only secure function access to sensitive data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create proper role-based access controls with defense in depth
 
 -- 1. Admins can access all employee sensitive data (with audit logging)
-CREATE POLICY "Admins can access employee sensitive data with audit" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can access employee sensitive data with audit" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can access employee sensitive data with audit" 
 ON public.employee_sensitive_data 
 FOR SELECT 
 USING (
   has_role(auth.uid(), 'admin'::app_role) AND
   -- Trigger audit logging in application layer
   true
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. HR Managers can access employee data with approved session
-CREATE POLICY "HR managers can access with approved session" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can access with approved session" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "HR managers can access with approved session" 
 ON public.employee_sensitive_data 
 FOR SELECT 
 USING (
@@ -32,17 +34,18 @@ USING (
     AND r.status = 'approved'
     AND r.employee_id = employee_sensitive_data.employee_id
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. Employees can access only their own basic information (not salary/SSN)
-CREATE POLICY "Employees can view their own basic info only" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Employees can view their own basic info only" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Employees can view their own basic info only" 
 ON public.employee_sensitive_data 
 FOR SELECT 
 USING (
   auth.uid() = id AND
   -- Allow access to basic fields only (application must filter sensitive fields)
   data_classification != 'critical'
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 4. Block access to critical data fields for non-admins
 -- Create a secure view for non-admin access with field restrictions
@@ -82,6 +85,7 @@ WHERE
 ALTER VIEW public.employee_basic_info SET (security_invoker = true);
 
 -- Create audit function for sensitive data access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='audit_employee_sensitive_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.audit_employee_sensitive_access(
     accessed_employee_id TEXT,
     access_type TEXT DEFAULT 'view',

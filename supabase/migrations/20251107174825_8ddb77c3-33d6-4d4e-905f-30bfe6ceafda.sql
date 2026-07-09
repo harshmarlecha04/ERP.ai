@@ -19,6 +19,7 @@ ALTER COLUMN company_name SET NOT NULL,
 ALTER COLUMN company_code SET NOT NULL;
 
 -- Step 4: Add unique constraint on company_code
+ALTER TABLE customers DROP CONSTRAINT IF EXISTS customers_company_code_unique;
 ALTER TABLE customers 
 ADD CONSTRAINT customers_company_code_unique UNIQUE (company_code);
 

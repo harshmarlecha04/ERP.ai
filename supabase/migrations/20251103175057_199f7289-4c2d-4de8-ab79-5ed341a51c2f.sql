@@ -1,5 +1,5 @@
 -- Create rd_projects table
-CREATE TABLE rd_projects (
+CREATE TABLE IF NOT EXISTS rd_projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_number TEXT UNIQUE NOT NULL,
   customer_id UUID REFERENCES customers(id),
@@ -21,7 +21,7 @@ CREATE TABLE rd_projects (
 );
 
 -- Create rd_project_actives table
-CREATE TABLE rd_project_actives (
+CREATE TABLE IF NOT EXISTS rd_project_actives (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rd_project_id UUID REFERENCES rd_projects(id) ON DELETE CASCADE,
   active_name TEXT NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE rd_project_actives (
 );
 
 -- Create rd_project_batches table
-CREATE TABLE rd_project_batches (
+CREATE TABLE IF NOT EXISTS rd_project_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rd_project_id UUID REFERENCES rd_projects(id) ON DELETE CASCADE,
   batch_number TEXT NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE rd_project_batches (
 );
 
 -- Create rd_batch_feedback table
-CREATE TABLE rd_batch_feedback (
+CREATE TABLE IF NOT EXISTS rd_batch_feedback (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rd_batch_id UUID REFERENCES rd_project_batches(id) ON DELETE CASCADE,
   feedback_text TEXT NOT NULL,
@@ -57,41 +57,58 @@ CREATE TABLE rd_batch_feedback (
 );
 
 -- Enable RLS
-ALTER TABLE rd_projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rd_project_actives ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rd_project_batches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rd_batch_feedback ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE rd_projects ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE rd_project_actives ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE rd_project_batches ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE rd_batch_feedback ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS Policies - All authenticated users
-CREATE POLICY "All users can view rd_projects" ON rd_projects FOR SELECT TO authenticated USING (true);
-CREATE POLICY "All users can insert rd_projects" ON rd_projects FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "All users can update rd_projects" ON rd_projects FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "All users can delete rd_projects" ON rd_projects FOR DELETE TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view rd_projects" ON rd_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view rd_projects" ON rd_projects FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can insert rd_projects" ON rd_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can insert rd_projects" ON rd_projects FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update rd_projects" ON rd_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update rd_projects" ON rd_projects FOR UPDATE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete rd_projects" ON rd_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete rd_projects" ON rd_projects FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can view rd_project_actives" ON rd_project_actives FOR SELECT TO authenticated USING (true);
-CREATE POLICY "All users can insert rd_project_actives" ON rd_project_actives FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "All users can update rd_project_actives" ON rd_project_actives FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "All users can delete rd_project_actives" ON rd_project_actives FOR DELETE TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view rd_project_actives" ON rd_project_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view rd_project_actives" ON rd_project_actives FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can insert rd_project_actives" ON rd_project_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can insert rd_project_actives" ON rd_project_actives FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update rd_project_actives" ON rd_project_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update rd_project_actives" ON rd_project_actives FOR UPDATE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete rd_project_actives" ON rd_project_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete rd_project_actives" ON rd_project_actives FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can view rd_project_batches" ON rd_project_batches FOR SELECT TO authenticated USING (true);
-CREATE POLICY "All users can insert rd_project_batches" ON rd_project_batches FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "All users can update rd_project_batches" ON rd_project_batches FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "All users can delete rd_project_batches" ON rd_project_batches FOR DELETE TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view rd_project_batches" ON rd_project_batches; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view rd_project_batches" ON rd_project_batches FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can insert rd_project_batches" ON rd_project_batches; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can insert rd_project_batches" ON rd_project_batches FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update rd_project_batches" ON rd_project_batches; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update rd_project_batches" ON rd_project_batches FOR UPDATE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete rd_project_batches" ON rd_project_batches; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete rd_project_batches" ON rd_project_batches FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can view rd_batch_feedback" ON rd_batch_feedback FOR SELECT TO authenticated USING (true);
-CREATE POLICY "All users can insert rd_batch_feedback" ON rd_batch_feedback FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "All users can update rd_batch_feedback" ON rd_batch_feedback FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "All users can delete rd_batch_feedback" ON rd_batch_feedback FOR DELETE TO authenticated USING (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view rd_batch_feedback" ON rd_batch_feedback; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view rd_batch_feedback" ON rd_batch_feedback FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can insert rd_batch_feedback" ON rd_batch_feedback; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can insert rd_batch_feedback" ON rd_batch_feedback FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update rd_batch_feedback" ON rd_batch_feedback; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update rd_batch_feedback" ON rd_batch_feedback FOR UPDATE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete rd_batch_feedback" ON rd_batch_feedback; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete rd_batch_feedback" ON rd_batch_feedback FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create indexes
-CREATE INDEX idx_rd_projects_customer ON rd_projects(customer_id);
-CREATE INDEX idx_rd_projects_status ON rd_projects(status);
-CREATE INDEX idx_rd_project_actives_project ON rd_project_actives(rd_project_id);
-CREATE INDEX idx_rd_project_batches_project ON rd_project_batches(rd_project_id);
-CREATE INDEX idx_rd_batch_feedback_batch ON rd_batch_feedback(rd_batch_id);
-CREATE INDEX idx_rd_projects_converted_formula ON rd_projects(converted_to_formula_id);
+CREATE INDEX IF NOT EXISTS idx_rd_projects_customer ON rd_projects(customer_id);
+CREATE INDEX IF NOT EXISTS idx_rd_projects_status ON rd_projects(status);
+CREATE INDEX IF NOT EXISTS idx_rd_project_actives_project ON rd_project_actives(rd_project_id);
+CREATE INDEX IF NOT EXISTS idx_rd_project_batches_project ON rd_project_batches(rd_project_id);
+CREATE INDEX IF NOT EXISTS idx_rd_batch_feedback_batch ON rd_batch_feedback(rd_batch_id);
+CREATE INDEX IF NOT EXISTS idx_rd_projects_converted_formula ON rd_projects(converted_to_formula_id);
 
 -- Create function to convert R&D to production formula
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='convert_rd_to_production' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION convert_rd_to_production(
   p_rd_project_id UUID
 ) RETURNS UUID AS $$

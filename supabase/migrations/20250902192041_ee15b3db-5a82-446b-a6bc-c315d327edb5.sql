@@ -6,6 +6,7 @@ DROP VIEW IF EXISTS public.accessible_formulas CASCADE;
 DROP VIEW IF EXISTS public.user_basic_info CASCADE;
 
 -- Create secure function to replace accessible_formulas view
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas()
 RETURNS TABLE(
   id uuid,
@@ -80,6 +81,7 @@ END;
 $$;
 
 -- Create secure function to replace user_basic_info view
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_user_basic_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_user_basic_info(target_user_id uuid DEFAULT NULL)
 RETURNS TABLE(
   id uuid,
@@ -127,7 +129,7 @@ GRANT EXECUTE ON FUNCTION public.get_accessible_formulas() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_basic_info(uuid) TO authenticated;
 
 -- Log the security fix
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -152,4 +154,4 @@ INSERT INTO public.security_alerts (
     'compliance', 'enhanced_security_posture'
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

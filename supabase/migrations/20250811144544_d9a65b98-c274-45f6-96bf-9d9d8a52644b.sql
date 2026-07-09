@@ -1,5 +1,6 @@
 -- Redefine custom functions without SECURITY DEFINER to satisfy linter
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_upsert_schedule' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_upsert_schedule(p_schedule_date date)
 returns uuid
 language plpgsql
@@ -21,6 +22,7 @@ begin
 end;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_formula_requirements' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_formula_requirements(p_formula_id uuid, p_batches int)
 returns table(ingredient_id uuid, ingredient_name text, required_kg numeric)
 language sql
@@ -37,6 +39,7 @@ as $$
   ) rec
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_check_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_check_materials(
   p_formula_id uuid,
   p_batches int,
@@ -89,6 +92,7 @@ begin
 end;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_reserve_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_reserve_materials(p_schedule_item_id uuid)
 returns jsonb
 language plpgsql
@@ -149,6 +153,7 @@ begin
 end;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_move_item_and_recheck' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_move_item_and_recheck(p_schedule_item_id uuid, p_new_date date)
 returns jsonb
 language plpgsql
@@ -187,6 +192,7 @@ begin
 end;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_create_schedule_item' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_create_schedule_item(
   p_schedule_date date,
   p_formula_id uuid,

@@ -3,6 +3,7 @@ DROP FUNCTION IF EXISTS public.get_accessible_formulas();
 DROP FUNCTION IF EXISTS public.get_accessible_formulas(uuid);
 
 -- Recreate the secure function with proper return type
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid)
 RETURNS TABLE(
     id uuid,

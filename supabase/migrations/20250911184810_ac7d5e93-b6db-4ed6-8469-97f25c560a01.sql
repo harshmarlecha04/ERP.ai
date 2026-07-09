@@ -1,5 +1,5 @@
 -- Insert some sample activity data with a valid user ID
-INSERT INTO public.user_activity_audit (
+DO $seed$ BEGIN INSERT INTO public.user_activity_audit (
     user_id, activity_type, table_name, operation, record_id,
     new_values, ip_address, details, risk_level
 ) VALUES 
@@ -57,9 +57,10 @@ INSERT INTO public.user_activity_audit (
     '192.168.1.100'::inet,
     '{"timestamp": "2025-01-11T14:20:00Z", "trigger": "sample_data"}'::jsonb,
     'low'
-);
+); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- Update the function to allow any authenticated user to view activity
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_all_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_all_user_activity()
 RETURNS TABLE(
     id UUID,

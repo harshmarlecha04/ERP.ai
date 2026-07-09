@@ -6,6 +6,7 @@ DROP VIEW IF EXISTS public.secure_usage_stats;
 
 -- Instead, ensure the existing get_raw_material_usage_stats() function is the only safe way to access this data
 -- Update the function to have proper search_path (fixing the linter warning)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_raw_material_usage_stats' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_raw_material_usage_stats()
 RETURNS TABLE(
   raw_material_id uuid, 
@@ -62,6 +63,7 @@ COMMENT ON FUNCTION public.get_raw_material_usage_stats() IS
 'SECURE FUNCTION: Provides controlled access to sensitive manufacturing usage statistics. Includes role-based authorization and audit logging. This is the ONLY approved method to access raw_material_usage_stats data.';
 
 -- Update the validate function to have proper search_path as well
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_usage_stats_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_usage_stats_access()
 RETURNS boolean
 LANGUAGE plpgsql

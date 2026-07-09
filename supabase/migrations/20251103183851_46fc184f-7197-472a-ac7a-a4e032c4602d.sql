@@ -1,5 +1,5 @@
 -- Create rd_project_versions table
-CREATE TABLE rd_project_versions (
+CREATE TABLE IF NOT EXISTS rd_project_versions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rd_project_id UUID NOT NULL REFERENCES rd_projects(id) ON DELETE CASCADE,
   version_number TEXT NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE rd_project_versions (
 );
 
 -- Create rd_version_actives table
-CREATE TABLE rd_version_actives (
+CREATE TABLE IF NOT EXISTS rd_version_actives (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   version_id UUID NOT NULL REFERENCES rd_project_versions(id) ON DELETE CASCADE,
   active_name TEXT NOT NULL,
@@ -32,8 +32,8 @@ CREATE TABLE rd_version_actives (
 
 -- Add version tracking to rd_projects
 ALTER TABLE rd_projects
-ADD COLUMN current_version_id UUID REFERENCES rd_project_versions(id),
-ADD COLUMN version_count INTEGER DEFAULT 0;
+ADD COLUMN IF NOT EXISTS current_version_id UUID REFERENCES rd_project_versions(id),
+ADD COLUMN IF NOT EXISTS version_count INTEGER DEFAULT 0;
 
 -- Migrate existing rd_projects to versions
 DO $$
@@ -112,39 +112,47 @@ BEGIN
 END $$;
 
 -- RLS policies for rd_project_versions
-ALTER TABLE rd_project_versions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE rd_project_versions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "All users can view rd_project_versions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view rd_project_versions" ON rd_project_versions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view rd_project_versions"
   ON rd_project_versions FOR SELECT
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can insert rd_project_versions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can insert rd_project_versions" ON rd_project_versions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can insert rd_project_versions"
   ON rd_project_versions FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can update rd_project_versions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update rd_project_versions" ON rd_project_versions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update rd_project_versions"
   ON rd_project_versions FOR UPDATE
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can delete rd_project_versions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete rd_project_versions" ON rd_project_versions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete rd_project_versions"
   ON rd_project_versions FOR DELETE
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS policies for rd_version_actives
-ALTER TABLE rd_version_actives ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE rd_version_actives ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "All users can view rd_version_actives"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can view rd_version_actives" ON rd_version_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can view rd_version_actives"
   ON rd_version_actives FOR SELECT
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can insert rd_version_actives"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can insert rd_version_actives" ON rd_version_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can insert rd_version_actives"
   ON rd_version_actives FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can update rd_version_actives"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can update rd_version_actives" ON rd_version_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can update rd_version_actives"
   ON rd_version_actives FOR UPDATE
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "All users can delete rd_version_actives"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can delete rd_version_actives" ON rd_version_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All users can delete rd_version_actives"
   ON rd_version_actives FOR DELETE
-  USING (true);
+  USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

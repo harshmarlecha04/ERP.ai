@@ -1,8 +1,9 @@
 -- Add vessel column to formula_ingredients table
 ALTER TABLE public.formula_ingredients 
-ADD COLUMN vessel TEXT CHECK (vessel IN ('cooker', 'holding')) NULL;
+ADD COLUMN IF NOT EXISTS vessel TEXT CHECK (vessel IN ('cooker', 'holding')) NULL;
 
 -- Update the save_formula_rpc function to handle vessel data in recipe_json
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='save_formula_rpc' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.save_formula_rpc(formula_data jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql

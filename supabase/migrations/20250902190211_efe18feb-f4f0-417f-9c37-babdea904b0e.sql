@@ -2,6 +2,7 @@
 -- Update all functions that don't have search_path set
 
 -- Fix log_profile_access function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_profile_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_profile_access(
   viewer_id uuid,
   profile_id uuid,
@@ -38,6 +39,7 @@ END;
 $$;
 
 -- Ensure the profile access trigger function has proper search path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='profile_access_trigger' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.profile_access_trigger()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -63,6 +65,7 @@ $$;
 -- Update any other functions that might be missing search_path
 -- (These are from previous migrations that might need updating)
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_formula_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_formula_access(_user_id uuid, _formula_id uuid, _access_type text, _details jsonb DEFAULT '{}'::jsonb)
 RETURNS void
 LANGUAGE plpgsql
@@ -88,7 +91,7 @@ END;
 $$;
 
 -- Log the security path fixes
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -106,4 +109,4 @@ INSERT INTO public.security_alerts (
     'security_improvement', 'prevents_search_path_manipulation_attacks'
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

@@ -1,34 +1,38 @@
 -- Fix security issues for profiles, suppliers, and security_config tables
 
 -- 1. Fix profiles table RLS policies to prevent unauthorized access to employee data
-DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure policies for profiles table
-CREATE POLICY "Users can view their own profile" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own profile" 
 ON public.profiles 
 FOR SELECT 
-USING (auth.uid() = id);
+USING (auth.uid() = id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Admins can view all profiles" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can view all profiles" 
 ON public.profiles 
 FOR SELECT 
 USING (EXISTS (
   SELECT 1 FROM public.user_roles 
   WHERE user_id = auth.uid() AND role = 'admin'
-));
+)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can update their own profile" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can update their own profile" 
 ON public.profiles 
 FOR UPDATE 
 USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id);
+WITH CHECK (auth.uid() = id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can insert their own profile" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can insert their own profile" 
 ON public.profiles 
 FOR INSERT 
-WITH CHECK (auth.uid() = id);
+WITH CHECK (auth.uid() = id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. Fix suppliers table RLS policies (restrict to procurement and admin only)
 -- First check if suppliers table exists and enable RLS
@@ -76,12 +80,13 @@ CREATE TABLE IF NOT EXISTS public.security_config (
 );
 
 -- Enable RLS and create admin-only policies
-ALTER TABLE public.security_config ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.security_config ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.security_config;
-DROP POLICY IF EXISTS "Enable full access for authenticated users" ON public.security_config;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enable read access for all users" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enable full access for authenticated users" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can access security config" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can access security config" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can access security config" 
 ON public.security_config 
 FOR ALL
 USING (EXISTS (
@@ -91,9 +96,10 @@ USING (EXISTS (
 WITH CHECK (EXISTS (
   SELECT 1 FROM public.user_roles 
   WHERE user_id = auth.uid() AND role = 'admin'
-));
+)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 4. Fix function search path issues for existing functions
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_formula_access_stats' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_formula_access_stats()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -108,6 +114,8 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+ALTER TABLE public.security_config ADD COLUMN IF NOT EXISTS description text;
 
 -- Ensure emergency lockdown config exists
 INSERT INTO public.security_config (config_key, config_value, description)

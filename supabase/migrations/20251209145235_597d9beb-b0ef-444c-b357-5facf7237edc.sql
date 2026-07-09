@@ -2,36 +2,40 @@
 ALTER VIEW public.v_packaging_balances SET (security_invoker = true);
 
 -- Fix 2: Add admin access to profiles (so admins can manage users)
-CREATE POLICY "Admins can view all profiles" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can view all profiles" 
 ON public.profiles 
 FOR SELECT 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Fix 3: Restrict customers table access to appropriate roles only
 -- Drop the overly permissive policy
-DROP POLICY IF EXISTS "Authenticated users can view customers" ON public.customers;
-DROP POLICY IF EXISTS "Authenticated users can create customers" ON public.customers;
-DROP POLICY IF EXISTS "Authenticated users can update customers" ON public.customers;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can create customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create role-restricted policies for customers
-CREATE POLICY "Authorized roles can view customers" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can view customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can view customers" 
 ON public.customers 
 FOR SELECT 
 USING (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role) OR
   has_role(auth.uid(), 'hr_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can create customers" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can create customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can create customers" 
 ON public.customers 
 FOR INSERT 
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can update customers" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can update customers" ON public.customers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can update customers" 
 ON public.customers 
 FOR UPDATE 
 USING (
@@ -41,16 +45,17 @@ USING (
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Fix 4: Restrict customer_inquiries access to appropriate roles
 -- Drop overly permissive policies  
-DROP POLICY IF EXISTS "Authenticated users can view all inquiries" ON public.customer_inquiries;
-DROP POLICY IF EXISTS "Authenticated users can update inquiries" ON public.customer_inquiries;
-DROP POLICY IF EXISTS "Authenticated users can delete inquiries" ON public.customer_inquiries;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view all inquiries" ON public.customer_inquiries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update inquiries" ON public.customer_inquiries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can delete inquiries" ON public.customer_inquiries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create role-restricted policies for customer_inquiries
-CREATE POLICY "Authorized roles can view inquiries" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can view inquiries" ON public.customer_inquiries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can view inquiries" 
 ON public.customer_inquiries 
 FOR SELECT 
 USING (
@@ -58,9 +63,10 @@ USING (
   has_role(auth.uid(), 'production_manager'::app_role) OR
   has_role(auth.uid(), 'hr_manager'::app_role) OR
   assigned_to = auth.uid()
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can update inquiries" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can update inquiries" ON public.customer_inquiries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can update inquiries" 
 ON public.customer_inquiries 
 FOR UPDATE 
 USING (
@@ -72,21 +78,23 @@ WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role) OR
   assigned_to = auth.uid()
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can delete inquiries" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can delete inquiries" ON public.customer_inquiries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can delete inquiries" 
 ON public.customer_inquiries 
 FOR DELETE 
 USING (
   has_role(auth.uid(), 'admin'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Similarly restrict inquiry_messages and inquiry_order_details
-DROP POLICY IF EXISTS "Authenticated users can view inquiry messages" ON public.inquiry_messages;
-DROP POLICY IF EXISTS "Authenticated users can update inquiry messages" ON public.inquiry_messages;
-DROP POLICY IF EXISTS "Authenticated users can delete inquiry messages" ON public.inquiry_messages;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view inquiry messages" ON public.inquiry_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update inquiry messages" ON public.inquiry_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can delete inquiry messages" ON public.inquiry_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can view inquiry messages" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can view inquiry messages" ON public.inquiry_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can view inquiry messages" 
 ON public.inquiry_messages 
 FOR SELECT 
 USING (
@@ -98,26 +106,29 @@ USING (
     WHERE ci.id = inquiry_messages.inquiry_id 
     AND ci.assigned_to = auth.uid()
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can update inquiry messages" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can update inquiry messages" ON public.inquiry_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can update inquiry messages" 
 ON public.inquiry_messages 
 FOR UPDATE 
 USING (
   has_role(auth.uid(), 'admin'::app_role) OR 
   sender_id = auth.uid()
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can delete inquiry messages" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can delete inquiry messages" ON public.inquiry_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can delete inquiry messages" 
 ON public.inquiry_messages 
 FOR DELETE 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Authenticated users can view inquiry order details" ON public.inquiry_order_details;
-DROP POLICY IF EXISTS "Authenticated users can update inquiry order details" ON public.inquiry_order_details;
-DROP POLICY IF EXISTS "Authenticated users can delete inquiry order details" ON public.inquiry_order_details;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view inquiry order details" ON public.inquiry_order_details; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update inquiry order details" ON public.inquiry_order_details; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can delete inquiry order details" ON public.inquiry_order_details; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can view inquiry order details" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can view inquiry order details" ON public.inquiry_order_details; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can view inquiry order details" 
 ON public.inquiry_order_details 
 FOR SELECT 
 USING (
@@ -129,17 +140,19 @@ USING (
     WHERE ci.id = inquiry_order_details.inquiry_id 
     AND ci.assigned_to = auth.uid()
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can update inquiry order details" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can update inquiry order details" ON public.inquiry_order_details; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can update inquiry order details" 
 ON public.inquiry_order_details 
 FOR UPDATE 
 USING (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authorized roles can delete inquiry order details" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authorized roles can delete inquiry order details" ON public.inquiry_order_details; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authorized roles can delete inquiry order details" 
 ON public.inquiry_order_details 
 FOR DELETE 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

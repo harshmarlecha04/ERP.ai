@@ -2,6 +2,7 @@
 DROP FUNCTION IF EXISTS fn_create_schedule_item(uuid, date, integer, uuid, integer, uuid, uuid, uuid, uuid, text, text);
 
 -- Update the existing function to support optional formula and manual entry
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_create_schedule_item' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION fn_create_schedule_item(
   p_schedule_date date,
   p_formula_id uuid DEFAULT NULL,

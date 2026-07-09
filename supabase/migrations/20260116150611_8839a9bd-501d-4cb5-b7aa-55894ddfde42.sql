@@ -1,9 +1,9 @@
 -- Fix 1: Remove dangerous time-based public access on customer_inquiries (CRITICAL)
 -- This policy allowed anonymous users to view inquiries created within 2 minutes
-DROP POLICY IF EXISTS "Allow viewing recently created inquiries" ON public.customer_inquiries;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Allow viewing recently created inquiries" ON public.customer_inquiries; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Fix 2: Remove overly broad profiles access policy if it exists
-DROP POLICY IF EXISTS "Authenticated users can view basic public profile info" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view basic public profile info" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Fix 3: Create audit logging table for sensitive data access
 CREATE TABLE IF NOT EXISTS public.sensitive_data_access_log (
@@ -21,19 +21,21 @@ CREATE TABLE IF NOT EXISTS public.sensitive_data_access_log (
 );
 
 -- Enable RLS on audit log
-ALTER TABLE public.sensitive_data_access_log ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.sensitive_data_access_log ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Only admins can view access logs
-CREATE POLICY "Only admins can view access logs"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view access logs" ON public.sensitive_data_access_log; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view access logs"
 ON public.sensitive_data_access_log FOR SELECT
 TO authenticated
-USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Authenticated users can insert their own access logs
-CREATE POLICY "Authenticated users can insert own access logs"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can insert own access logs" ON public.sensitive_data_access_log; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can insert own access logs"
 ON public.sensitive_data_access_log FOR INSERT
 TO authenticated
-WITH CHECK (user_id = auth.uid());
+WITH CHECK (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Add indexes for efficient querying
 CREATE INDEX IF NOT EXISTS idx_sensitive_access_user_time 
@@ -43,6 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_sensitive_access_table
 ON public.sensitive_data_access_log(table_accessed, accessed_at DESC);
 
 -- Fix 4: Create function to log sensitive data access (for customers/suppliers)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_sensitive_data_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_sensitive_data_access(
     p_table_name TEXT,
     p_record_id UUID DEFAULT NULL,
@@ -84,4 +87,4 @@ END;
 $$;
 
 -- Grant execute permission on the logging function
-GRANT EXECUTE ON FUNCTION public.log_sensitive_data_access TO authenticated;
+DO $gr$ BEGIN GRANT EXECUTE ON FUNCTION public.log_sensitive_data_access TO authenticated; EXCEPTION WHEN ambiguous_function OR undefined_function THEN NULL; END $gr$;

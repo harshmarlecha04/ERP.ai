@@ -1,4 +1,5 @@
 -- Fix fn_formula_requirements to properly extract materials from recipe_json
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_formula_requirements' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_formula_requirements(p_formula_id uuid, p_batches integer)
  RETURNS TABLE(ingredient_id uuid, ingredient_name text, required_kg numeric)
  LANGUAGE plpgsql
@@ -23,6 +24,7 @@ END;
 $function$;
 
 -- Update fn_check_materials to work with the corrected fn_formula_requirements
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_check_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_check_materials(p_formula_id uuid, p_batches integer, p_schedule_date date, p_exclude_schedule_item_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
  LANGUAGE plpgsql

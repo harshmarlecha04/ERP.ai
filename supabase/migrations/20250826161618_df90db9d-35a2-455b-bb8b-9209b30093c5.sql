@@ -5,6 +5,7 @@
 -- and fix any RPC functions that handle formula creation
 
 -- Create or replace the save_formula_rpc function to properly handle formula creation
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='save_formula_rpc' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.save_formula_rpc(
     formula_data jsonb
 ) RETURNS jsonb

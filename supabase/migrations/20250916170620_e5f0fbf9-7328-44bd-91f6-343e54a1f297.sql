@@ -1,4 +1,5 @@
 -- Fix the ambiguous column reference in get_inventory_status_with_thresholds function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_inventory_status_with_thresholds' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_inventory_status_with_thresholds()
  RETURNS TABLE(raw_material_id uuid, material_code text, material_name text, supplier text, current_quantity_kg numeric, min_quantity_kg numeric, reorder_quantity_kg numeric, alert_enabled boolean, status text, percentage_of_minimum numeric)
  LANGUAGE plpgsql

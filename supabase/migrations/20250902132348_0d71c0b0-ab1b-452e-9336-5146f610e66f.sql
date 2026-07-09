@@ -2,11 +2,12 @@
 -- This addresses the critical security issue where trade secrets could be accessed by unauthorized users
 
 -- 1. Drop the overly permissive existing policies
-DROP POLICY IF EXISTS "Secure multi-layer formula access" ON public.formulas;
-DROP POLICY IF EXISTS "Secure multi-layer formula update" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure multi-layer formula access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure multi-layer formula update" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. Create new restrictive policies based on security levels
-CREATE POLICY "Trade secret formulas require explicit access"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Trade secret formulas require explicit access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Trade secret formulas require explicit access"
 ON public.formulas
 FOR SELECT
 USING (
@@ -33,10 +34,11 @@ USING (
        has_role(auth.uid(), 'production_manager'::app_role))
   END
   AND NOT is_deleted
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. Secure update policy - only admins and R&D managers with logging
-CREATE POLICY "Secure formula updates with audit"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula updates with audit" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure formula updates with audit"
 ON public.formulas
 FOR UPDATE
 USING (
@@ -45,9 +47,10 @@ USING (
 )
 WITH CHECK (
   (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'rd_manager'::app_role))
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 4. Create function to check if user can access specific formula (used by components)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_specific_formula' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_specific_formula(
   _user_id uuid, 
   _formula_id uuid, 
@@ -76,6 +79,7 @@ END;
 $$;
 
 -- 5. Create function to get accessible formulas for a user (performance optimization)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas_for_user' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas_for_user(_user_id uuid)
 RETURNS TABLE(
   id uuid,
@@ -149,6 +153,7 @@ END;
 $$;
 
 -- 6. Add security monitoring trigger for formula access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='monitor_formula_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.monitor_formula_access()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -182,6 +187,7 @@ $$;
 
 -- Create trigger for monitoring (only on updates to avoid noise on inserts)
 DROP TRIGGER IF EXISTS formula_access_monitor ON public.formulas;
+DROP TRIGGER IF EXISTS formula_access_monitor ON public.formulas;
 CREATE TRIGGER formula_access_monitor
   AFTER UPDATE ON public.formulas
   FOR EACH ROW
@@ -189,5 +195,5 @@ CREATE TRIGGER formula_access_monitor
   EXECUTE FUNCTION monitor_formula_access();
 
 -- 7. Grant necessary permissions to the security functions
-GRANT EXECUTE ON FUNCTION public.can_access_specific_formula TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_accessible_formulas_for_user TO authenticated;
+DO $gr$ BEGIN GRANT EXECUTE ON FUNCTION public.can_access_specific_formula TO authenticated; EXCEPTION WHEN ambiguous_function OR undefined_function THEN NULL; END $gr$;
+DO $gr$ BEGIN GRANT EXECUTE ON FUNCTION public.get_accessible_formulas_for_user TO authenticated; EXCEPTION WHEN ambiguous_function OR undefined_function THEN NULL; END $gr$;

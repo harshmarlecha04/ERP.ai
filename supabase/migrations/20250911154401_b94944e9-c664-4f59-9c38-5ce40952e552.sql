@@ -1,4 +1,5 @@
 -- Create comprehensive business hours validation function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='is_business_hours' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.is_business_hours()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -26,6 +27,7 @@ END;
 $$;
 
 -- Update trade secret access validation to allow all users during business hours
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -82,10 +84,11 @@ END;
 $$;
 
 -- Update supplier access policies to allow viewing during business hours
-DROP POLICY IF EXISTS "Essential roles supplier access via secure function" ON public.suppliers;
-DROP POLICY IF EXISTS "Block direct supplier contact access" ON public.suppliers;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Essential roles supplier access via secure function" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Block direct supplier contact access" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Business hours supplier access" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Business hours supplier access" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Business hours supplier access" 
 ON public.suppliers 
 FOR SELECT 
 USING (
@@ -95,9 +98,10 @@ USING (
         has_role(auth.uid(), 'admin'::app_role) OR 
         has_role(auth.uid(), 'production_manager'::app_role)
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Update purchase orders function for business hours financial access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_purchase_orders_with_business_hours_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_purchase_orders_with_business_hours_access()
 RETURNS TABLE(id uuid, vendor_id uuid, ingredient_id uuid, quantity numeric, ordered_date date, expected_delivery date, created_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone, received_date date, received_by uuid, invoice_total numeric, status text, vendor_name text, ingredient_name text, uom text, po_number text, terms text, tracking_number text, can_view_financial_data boolean)
 LANGUAGE plpgsql
@@ -148,6 +152,7 @@ END;
 $$;
 
 -- Update employee data access for business hours
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_employee_data_business_hours' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_employee_data_business_hours(_user_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -174,6 +179,7 @@ END;
 $$;
 
 -- Update profile access for business hours
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_profile_business_hours' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_profile_business_hours(_viewer_id uuid, _profile_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -215,9 +221,10 @@ END;
 $$;
 
 -- Update formulas RLS policy for business hours access
-DROP POLICY IF EXISTS "Unrestricted admin formula access v2" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Unrestricted admin formula access v2" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Business hours enhanced formula access" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Business hours enhanced formula access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Business hours enhanced formula access" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -231,4 +238,4 @@ USING (
         ((security_level = 'confidential'::text) AND has_role(auth.uid(), 'rd_manager'::app_role)) OR 
         ((security_level = 'trade_secret'::text) AND validate_trade_secret_access_enhanced(auth.uid(), id))
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

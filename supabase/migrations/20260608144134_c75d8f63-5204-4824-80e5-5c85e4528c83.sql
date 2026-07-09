@@ -17,6 +17,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============ updated_at helper (reuse if exists) ============
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='launch_set_updated_at' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.launch_set_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -24,7 +25,7 @@ SET search_path = public
 AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
 -- ============ PRODUCT LINES ============
-CREATE TABLE public.launch_product_lines (
+CREATE TABLE IF NOT EXISTS public.launch_product_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   description TEXT,
@@ -36,15 +37,20 @@ CREATE TABLE public.launch_product_lines (
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.launch_product_lines TO authenticated;
 GRANT ALL ON public.launch_product_lines TO service_role;
-ALTER TABLE public.launch_product_lines ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth read product lines" ON public.launch_product_lines FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth insert product lines" ON public.launch_product_lines FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "auth update product lines" ON public.launch_product_lines FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "admin delete product lines" ON public.launch_product_lines FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin'));
+DO $rls$ BEGIN ALTER TABLE public.launch_product_lines ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth read product lines" ON public.launch_product_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth read product lines" ON public.launch_product_lines FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth insert product lines" ON public.launch_product_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth insert product lines" ON public.launch_product_lines FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth update product lines" ON public.launch_product_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth update product lines" ON public.launch_product_lines FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "admin delete product lines" ON public.launch_product_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "admin delete product lines" ON public.launch_product_lines FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DROP TRIGGER IF EXISTS trg_launch_product_lines_uat ON public.launch_product_lines;
 CREATE TRIGGER trg_launch_product_lines_uat BEFORE UPDATE ON public.launch_product_lines FOR EACH ROW EXECUTE FUNCTION public.launch_set_updated_at();
 
 -- ============ PROJECTS ============
-CREATE TABLE public.launch_projects (
+CREATE TABLE IF NOT EXISTS public.launch_projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_line_id UUID REFERENCES public.launch_product_lines(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
@@ -61,16 +67,21 @@ CREATE TABLE public.launch_projects (
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.launch_projects TO authenticated;
 GRANT ALL ON public.launch_projects TO service_role;
-ALTER TABLE public.launch_projects ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth read projects" ON public.launch_projects FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth insert projects" ON public.launch_projects FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "auth update projects" ON public.launch_projects FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "admin or owner delete projects" ON public.launch_projects FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin') OR created_by = auth.uid() OR owner_id = auth.uid());
-CREATE INDEX idx_launch_projects_line ON public.launch_projects(product_line_id);
+DO $rls$ BEGIN ALTER TABLE public.launch_projects ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth read projects" ON public.launch_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth read projects" ON public.launch_projects FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth insert projects" ON public.launch_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth insert projects" ON public.launch_projects FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth update projects" ON public.launch_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth update projects" ON public.launch_projects FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "admin or owner delete projects" ON public.launch_projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "admin or owner delete projects" ON public.launch_projects FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin') OR created_by = auth.uid() OR owner_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+CREATE INDEX IF NOT EXISTS idx_launch_projects_line ON public.launch_projects(product_line_id);
+DROP TRIGGER IF EXISTS trg_launch_projects_uat ON public.launch_projects;
 CREATE TRIGGER trg_launch_projects_uat BEFORE UPDATE ON public.launch_projects FOR EACH ROW EXECUTE FUNCTION public.launch_set_updated_at();
 
 -- ============ TASKS ============
-CREATE TABLE public.launch_tasks (
+CREATE TABLE IF NOT EXISTS public.launch_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES public.launch_projects(id) ON DELETE CASCADE,
   product_line_id UUID REFERENCES public.launch_product_lines(id) ON DELETE SET NULL,
@@ -89,17 +100,22 @@ CREATE TABLE public.launch_tasks (
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.launch_tasks TO authenticated;
 GRANT ALL ON public.launch_tasks TO service_role;
-ALTER TABLE public.launch_tasks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth read tasks" ON public.launch_tasks FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth insert tasks" ON public.launch_tasks FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "auth update tasks" ON public.launch_tasks FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "admin or owner delete tasks" ON public.launch_tasks FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin') OR created_by = auth.uid() OR assignee_id = auth.uid());
-CREATE INDEX idx_launch_tasks_project ON public.launch_tasks(project_id);
-CREATE INDEX idx_launch_tasks_assignee ON public.launch_tasks(assignee_id);
+DO $rls$ BEGIN ALTER TABLE public.launch_tasks ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth read tasks" ON public.launch_tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth read tasks" ON public.launch_tasks FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth insert tasks" ON public.launch_tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth insert tasks" ON public.launch_tasks FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth update tasks" ON public.launch_tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth update tasks" ON public.launch_tasks FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "admin or owner delete tasks" ON public.launch_tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "admin or owner delete tasks" ON public.launch_tasks FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin') OR created_by = auth.uid() OR assignee_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+CREATE INDEX IF NOT EXISTS idx_launch_tasks_project ON public.launch_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_launch_tasks_assignee ON public.launch_tasks(assignee_id);
+DROP TRIGGER IF EXISTS trg_launch_tasks_uat ON public.launch_tasks;
 CREATE TRIGGER trg_launch_tasks_uat BEFORE UPDATE ON public.launch_tasks FOR EACH ROW EXECUTE FUNCTION public.launch_set_updated_at();
 
 -- ============ TASK UPDATES (timeline / comments) ============
-CREATE TABLE public.launch_task_updates (
+CREATE TABLE IF NOT EXISTS public.launch_task_updates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES public.launch_tasks(id) ON DELETE CASCADE,
   author_id UUID NOT NULL,
@@ -109,15 +125,19 @@ CREATE TABLE public.launch_task_updates (
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.launch_task_updates TO authenticated;
 GRANT ALL ON public.launch_task_updates TO service_role;
-ALTER TABLE public.launch_task_updates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth read updates" ON public.launch_task_updates FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth insert updates" ON public.launch_task_updates FOR INSERT TO authenticated WITH CHECK (auth.uid() = author_id);
-CREATE POLICY "own update updates" ON public.launch_task_updates FOR UPDATE TO authenticated USING (author_id = auth.uid()) WITH CHECK (author_id = auth.uid());
-CREATE POLICY "own or admin delete updates" ON public.launch_task_updates FOR DELETE TO authenticated USING (author_id = auth.uid() OR public.has_role(auth.uid(),'admin'));
-CREATE INDEX idx_launch_task_updates_task ON public.launch_task_updates(task_id);
+DO $rls$ BEGIN ALTER TABLE public.launch_task_updates ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth read updates" ON public.launch_task_updates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth read updates" ON public.launch_task_updates FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth insert updates" ON public.launch_task_updates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth insert updates" ON public.launch_task_updates FOR INSERT TO authenticated WITH CHECK (auth.uid() = author_id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "own update updates" ON public.launch_task_updates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "own update updates" ON public.launch_task_updates FOR UPDATE TO authenticated USING (author_id = auth.uid()) WITH CHECK (author_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "own or admin delete updates" ON public.launch_task_updates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "own or admin delete updates" ON public.launch_task_updates FOR DELETE TO authenticated USING (author_id = auth.uid() OR public.has_role(auth.uid(),'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+CREATE INDEX IF NOT EXISTS idx_launch_task_updates_task ON public.launch_task_updates(task_id);
 
 -- ============ ATTACHMENTS (task or project) ============
-CREATE TABLE public.launch_attachments (
+CREATE TABLE IF NOT EXISTS public.launch_attachments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID REFERENCES public.launch_tasks(id) ON DELETE CASCADE,
   project_id UUID REFERENCES public.launch_projects(id) ON DELETE CASCADE,
@@ -131,15 +151,18 @@ CREATE TABLE public.launch_attachments (
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.launch_attachments TO authenticated;
 GRANT ALL ON public.launch_attachments TO service_role;
-ALTER TABLE public.launch_attachments ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth read attachments" ON public.launch_attachments FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth insert attachments" ON public.launch_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = uploaded_by);
-CREATE POLICY "own or admin delete attachments" ON public.launch_attachments FOR DELETE TO authenticated USING (uploaded_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
-CREATE INDEX idx_launch_attachments_task ON public.launch_attachments(task_id);
-CREATE INDEX idx_launch_attachments_project ON public.launch_attachments(project_id);
+DO $rls$ BEGIN ALTER TABLE public.launch_attachments ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth read attachments" ON public.launch_attachments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth read attachments" ON public.launch_attachments FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth insert attachments" ON public.launch_attachments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth insert attachments" ON public.launch_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = uploaded_by); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "own or admin delete attachments" ON public.launch_attachments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "own or admin delete attachments" ON public.launch_attachments FOR DELETE TO authenticated USING (uploaded_by = auth.uid() OR public.has_role(auth.uid(),'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+CREATE INDEX IF NOT EXISTS idx_launch_attachments_task ON public.launch_attachments(task_id);
+CREATE INDEX IF NOT EXISTS idx_launch_attachments_project ON public.launch_attachments(project_id);
 
 -- ============ MILESTONES ============
-CREATE TABLE public.launch_milestones (
+CREATE TABLE IF NOT EXISTS public.launch_milestones (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES public.launch_projects(id) ON DELETE CASCADE,
   product_line_id UUID REFERENCES public.launch_product_lines(id) ON DELETE CASCADE,
@@ -149,11 +172,15 @@ CREATE TABLE public.launch_milestones (
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.launch_milestones TO authenticated;
 GRANT ALL ON public.launch_milestones TO service_role;
-ALTER TABLE public.launch_milestones ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth read milestones" ON public.launch_milestones FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth write milestones" ON public.launch_milestones FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "auth update milestones" ON public.launch_milestones FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "auth delete milestones" ON public.launch_milestones FOR DELETE TO authenticated USING (auth.uid() IS NOT NULL);
+DO $rls$ BEGIN ALTER TABLE public.launch_milestones ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth read milestones" ON public.launch_milestones; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth read milestones" ON public.launch_milestones FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth write milestones" ON public.launch_milestones; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth write milestones" ON public.launch_milestones FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth update milestones" ON public.launch_milestones; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth update milestones" ON public.launch_milestones FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "auth delete milestones" ON public.launch_milestones; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "auth delete milestones" ON public.launch_milestones FOR DELETE TO authenticated USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- ============ SEED PRODUCT LINES ============
 INSERT INTO public.launch_product_lines (name, color) VALUES

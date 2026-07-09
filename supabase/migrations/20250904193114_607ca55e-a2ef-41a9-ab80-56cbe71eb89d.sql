@@ -2,7 +2,7 @@
 -- Separate most sensitive data into a restricted table with enhanced security
 
 -- Create a new table for critical/highly sensitive employee data
-CREATE TABLE public.employee_critical_data (
+CREATE TABLE IF NOT EXISTS public.employee_critical_data (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id text NOT NULL, -- References employee_sensitive_data.employee_id
   social_security_partial text,
@@ -19,37 +19,41 @@ CREATE TABLE public.employee_critical_data (
 );
 
 -- Enable RLS on the critical data table
-ALTER TABLE public.employee_critical_data ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.employee_critical_data ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create highly restrictive RLS policies for critical data
 -- Only admins can access critical data (removing HR manager access for most sensitive data)
-CREATE POLICY "Only admins can view critical employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view critical employee data" ON public.employee_critical_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view critical employee data" 
 ON public.employee_critical_data 
 FOR SELECT 
 TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can insert critical employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can insert critical employee data" ON public.employee_critical_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can insert critical employee data" 
 ON public.employee_critical_data 
 FOR INSERT 
 TO authenticated
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can update critical employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can update critical employee data" ON public.employee_critical_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can update critical employee data" 
 ON public.employee_critical_data 
 FOR UPDATE 
 TO authenticated
 USING (has_role(auth.uid(), 'admin'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can delete critical employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete critical employee data" ON public.employee_critical_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can delete critical employee data" 
 ON public.employee_critical_data 
 FOR DELETE 
 TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create audit table for critical data access
-CREATE TABLE public.employee_critical_data_audit (
+CREATE TABLE IF NOT EXISTS public.employee_critical_data_audit (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id text NOT NULL,
   accessed_by uuid NOT NULL,
@@ -63,23 +67,26 @@ CREATE TABLE public.employee_critical_data_audit (
 );
 
 -- Enable RLS on audit table
-ALTER TABLE public.employee_critical_data_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.employee_critical_data_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Only admins can view audit logs
-CREATE POLICY "Only admins can view critical data audit logs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view critical data audit logs" ON public.employee_critical_data_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view critical data audit logs" 
 ON public.employee_critical_data_audit 
 FOR SELECT 
 TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- All authenticated users can insert audit logs (for logging purposes)
-CREATE POLICY "All authenticated users can insert critical data audit logs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can insert critical data audit logs" ON public.employee_critical_data_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "All authenticated users can insert critical data audit logs" 
 ON public.employee_critical_data_audit 
 FOR INSERT 
 TO authenticated
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure function to access critical employee data with audit logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_employee_critical_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_employee_critical_data(_employee_id text DEFAULT NULL)
 RETURNS TABLE(
   id uuid,
@@ -160,6 +167,7 @@ END;
 $$;
 
 -- Create secure function to update critical employee data with audit logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_employee_critical_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_employee_critical_data(
   _employee_id text,
   _critical_data jsonb,
@@ -266,6 +274,6 @@ ON CONFLICT (employee_id) DO NOTHING;
 COMMENT ON TABLE public.employee_critical_data IS 'Contains the most sensitive employee data with enhanced security controls. Access is restricted to administrators only and all access is audited.';
 
 -- Create an index for performance
-CREATE INDEX idx_employee_critical_data_employee_id ON public.employee_critical_data(employee_id);
-CREATE INDEX idx_employee_critical_audit_employee_id ON public.employee_critical_data_audit(employee_id);
-CREATE INDEX idx_employee_critical_audit_accessed_at ON public.employee_critical_data_audit(accessed_at);
+CREATE INDEX IF NOT EXISTS idx_employee_critical_data_employee_id ON public.employee_critical_data(employee_id);
+CREATE INDEX IF NOT EXISTS idx_employee_critical_audit_employee_id ON public.employee_critical_data_audit(employee_id);
+CREATE INDEX IF NOT EXISTS idx_employee_critical_audit_accessed_at ON public.employee_critical_data_audit(accessed_at);

@@ -2,6 +2,7 @@
 -- The main security policy has already been successfully applied
 
 -- Create a secure audit function for supplier access (can be called by application)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='audit_supplier_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.audit_supplier_access(supplier_id UUID, access_type TEXT DEFAULT 'view')
 RETURNS VOID AS $$
 BEGIN
@@ -14,7 +15,7 @@ BEGIN
             created_at
         ) VALUES (
             'supplier_data_access',
-            'info',
+            'low',
             jsonb_build_object(
                 'user_id', auth.uid(),
                 'supplier_id', supplier_id,

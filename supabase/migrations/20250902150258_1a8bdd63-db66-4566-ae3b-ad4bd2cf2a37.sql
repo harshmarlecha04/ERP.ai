@@ -13,5 +13,5 @@ WHERE p.prosrc ILIKE '%log_formula_access%'
 AND p.proname NOT IN ('log_formula_access');
 
 -- Drop the log_formula_access function entirely since it's causing issues
-DROP FUNCTION IF EXISTS public.log_formula_access(uuid, uuid, text, jsonb);
+-- (removed: CREATE OR REPLACE below handles it; DROP fails due to dependent policies)
 DROP FUNCTION IF EXISTS public.log_formula_access(uuid, uuid, text);

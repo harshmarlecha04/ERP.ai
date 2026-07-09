@@ -5,10 +5,11 @@ ALTER TABLE production_schedule_items
 
 -- Add columns for manual entry
 ALTER TABLE production_schedule_items 
-  ADD COLUMN manual_customer_name text,
-  ADD COLUMN manual_formula_name text;
+  ADD COLUMN IF NOT EXISTS manual_customer_name text,
+  ADD COLUMN IF NOT EXISTS manual_formula_name text;
 
 -- Update the fn_create_schedule_item function to handle optional formula and manual entries
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_create_schedule_item' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION fn_create_schedule_item(
   p_formula_id uuid,
   p_scheduled_date date,

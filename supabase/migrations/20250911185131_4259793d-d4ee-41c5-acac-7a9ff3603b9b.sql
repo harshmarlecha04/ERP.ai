@@ -1,4 +1,9 @@
+-- Columns that existed on the original DB but are missing from the replayed chain
+ALTER TABLE public.user_activity_audit ADD COLUMN IF NOT EXISTS user_email text;
+ALTER TABLE public.user_activity_audit ADD COLUMN IF NOT EXISTS user_display_name text;
+
 -- Fix function return type mismatch by casting character varying to text
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_all_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_all_user_activity()
 RETURNS TABLE (
   id uuid,

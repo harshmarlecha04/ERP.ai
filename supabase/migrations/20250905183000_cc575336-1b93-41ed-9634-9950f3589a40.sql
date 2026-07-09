@@ -10,6 +10,7 @@ LEFT JOIN public.user_roles ur ON u.id = ur.user_id AND ur.role = 'admin'
 WHERE ur.user_id IS NULL;
 
 -- Replace the existing function to assign admin to ALL users (not just the first)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='assign_admin_to_all_users' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.assign_admin_to_all_users()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -25,6 +26,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
 
 -- Update the trigger to use the new function and apply to all users
 DROP TRIGGER IF EXISTS assign_first_admin_trigger ON auth.users;
+DROP TRIGGER IF EXISTS assign_admin_to_all_users_trigger ON auth.users;
 CREATE TRIGGER assign_admin_to_all_users_trigger
     AFTER INSERT ON auth.users
     FOR EACH ROW

@@ -1,5 +1,5 @@
 -- Create inventory update sessions table
-CREATE TABLE inventory_update_sessions (
+CREATE TABLE IF NOT EXISTS inventory_update_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_date DATE NOT NULL,
   created_by UUID REFERENCES auth.users(id),
@@ -10,7 +10,7 @@ CREATE TABLE inventory_update_sessions (
 );
 
 -- Create session items tracking table
-CREATE TABLE inventory_update_session_items (
+CREATE TABLE IF NOT EXISTS inventory_update_session_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID REFERENCES inventory_update_sessions(id) ON DELETE CASCADE,
   movement_id UUID REFERENCES packaging_movement(id) ON DELETE SET NULL,
@@ -26,53 +26,60 @@ CREATE TABLE inventory_update_session_items (
 );
 
 -- Add indexes
-CREATE INDEX idx_sessions_created_by ON inventory_update_sessions(created_by);
-CREATE INDEX idx_sessions_date ON inventory_update_sessions(session_date);
-CREATE INDEX idx_session_items_session ON inventory_update_session_items(session_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_created_by ON inventory_update_sessions(created_by);
+CREATE INDEX IF NOT EXISTS idx_sessions_date ON inventory_update_sessions(session_date);
+CREATE INDEX IF NOT EXISTS idx_session_items_session ON inventory_update_session_items(session_id);
 
 -- Enable RLS
-ALTER TABLE inventory_update_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_update_session_items ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE inventory_update_sessions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE inventory_update_session_items ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS Policies for sessions
-CREATE POLICY "Users can view their own sessions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own sessions" ON inventory_update_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own sessions"
   ON inventory_update_sessions FOR SELECT
   USING (auth.uid() = created_by OR EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager')
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can create sessions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can create sessions" ON inventory_update_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can create sessions"
   ON inventory_update_sessions FOR INSERT
-  WITH CHECK (auth.uid() = created_by);
+  WITH CHECK (auth.uid() = created_by); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can update their own sessions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can update their own sessions" ON inventory_update_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can update their own sessions"
   ON inventory_update_sessions FOR UPDATE
-  USING (auth.uid() = created_by);
+  USING (auth.uid() = created_by); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can delete their own sessions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can delete their own sessions" ON inventory_update_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can delete their own sessions"
   ON inventory_update_sessions FOR DELETE
   USING (auth.uid() = created_by OR EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager')
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policies for session items
-CREATE POLICY "Users can view session items"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view session items" ON inventory_update_session_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view session items"
   ON inventory_update_session_items FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM inventory_update_sessions s
     WHERE s.id = session_id AND (s.created_by = auth.uid() OR EXISTS (
       SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager')
     ))
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can create session items"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can create session items" ON inventory_update_session_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can create session items"
   ON inventory_update_session_items FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM inventory_update_sessions s
     WHERE s.id = session_id AND s.created_by = auth.uid()
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Add deletion hook to clean up actual inventory records
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='delete_session_inventory_records' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION delete_session_inventory_records()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -94,6 +101,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS cleanup_inventory_on_session_delete ON inventory_update_sessions;
 CREATE TRIGGER cleanup_inventory_on_session_delete
   BEFORE DELETE ON inventory_update_sessions
   FOR EACH ROW

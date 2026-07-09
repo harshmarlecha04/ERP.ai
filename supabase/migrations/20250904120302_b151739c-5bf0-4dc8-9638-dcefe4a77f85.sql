@@ -2,7 +2,7 @@
 -- Remove overly permissive access to employee personal information
 
 -- Drop the dangerous policy that allows all authenticated users to see all profiles
-DROP POLICY IF EXISTS "All authenticated users can view all profiles" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All authenticated users can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Keep the admin policy but make it more explicit
 -- (The existing admin policy is already properly restrictive)
@@ -10,18 +10,21 @@ DROP POLICY IF EXISTS "All authenticated users can view all profiles" ON public.
 -- Create secure, role-based access policies for profiles
 
 -- 1. Users can view their own profile (essential for profile management)
-CREATE POLICY "Users can view their own profile" ON public.profiles
-FOR SELECT USING (id = auth.uid());
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own profile" ON public.profiles
+FOR SELECT USING (id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. HR managers can view all profiles (legitimate business need)
-CREATE POLICY "HR managers can view all profiles" ON public.profiles
+DO $pol$ BEGIN DROP POLICY IF EXISTS "HR managers can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "HR managers can view all profiles" ON public.profiles
 FOR SELECT USING (
     has_role(auth.uid(), 'admin'::app_role) OR 
     has_role(auth.uid(), 'hr_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. Create a secure function for getting basic user info (display names, job titles)
 -- This allows the UI to show user names without exposing sensitive contact information
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_user_display_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_user_display_info(_user_ids uuid[] DEFAULT NULL::uuid[])
 RETURNS TABLE(
     id uuid,
@@ -84,6 +87,7 @@ $$;
 
 -- 4. Create a secure function for managers to get basic team member info
 -- This allows managers to see basic info about their direct reports without sensitive data
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_team_member_basic_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_team_member_basic_info(_manager_id uuid DEFAULT NULL::uuid)
 RETURNS TABLE(
     id uuid,
@@ -144,6 +148,7 @@ END;
 $$;
 
 -- 5. Create a function for HR to get full profile access with audit logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_profiles_hr_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_profiles_hr_access(_profile_id uuid DEFAULT NULL::uuid)
 RETURNS TABLE(
     id uuid,
@@ -210,6 +215,7 @@ END;
 $$;
 
 -- 6. Enhanced audit logging specifically for profile access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='audit_profile_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.audit_profile_access()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -245,6 +251,7 @@ END;
 $$;
 
 -- Create trigger for profile updates
+DROP TRIGGER IF EXISTS profile_update_audit_trigger ON public.profiles;
 CREATE TRIGGER profile_update_audit_trigger
     AFTER UPDATE ON public.profiles
     FOR EACH ROW

@@ -2,6 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Create helper function for flexible material name matching
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='find_raw_material_by_name' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.find_raw_material_by_name(
   p_recipe_material_name TEXT
 ) RETURNS UUID AS $$
@@ -41,6 +42,7 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 -- Update get_material_requirements_by_date_range to use fuzzy matching
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_material_requirements_by_date_range' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_material_requirements_by_date_range(
   p_start_date DATE,
   p_end_date DATE
@@ -181,6 +183,7 @@ END;
 $$;
 
 -- Create diagnostic function to identify unmatched materials
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_unmatched_recipe_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_unmatched_recipe_materials(
   p_start_date DATE,
   p_end_date DATE

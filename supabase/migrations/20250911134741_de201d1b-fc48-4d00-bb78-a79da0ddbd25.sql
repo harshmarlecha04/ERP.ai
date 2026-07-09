@@ -1,12 +1,13 @@
 -- Fix RLS policy conflicts and finalize supplier security protection
 
 -- Drop the conflicting "block direct access" policy since it's too restrictive
-DROP POLICY IF EXISTS "Block direct supplier contact access" ON public.suppliers;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Block direct supplier contact access" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- The existing RLS policies are sufficient - they already restrict access to admin and production_manager roles
 -- The secure function will work through the existing policies
 
 -- Create a trigger to log any direct table access attempts
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_supplier_table_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_supplier_table_access()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -31,11 +32,11 @@ $$;
 
 -- Apply the monitoring trigger
 DROP TRIGGER IF EXISTS supplier_access_monitor ON public.suppliers;
-CREATE TRIGGER supplier_access_monitor
-    AFTER SELECT OR INSERT OR UPDATE OR DELETE ON public.suppliers
-    FOR EACH ROW EXECUTE FUNCTION public.log_supplier_table_access();
+DROP TRIGGER IF EXISTS supplier_access_monitor ON public.suppliers;
+-- (removed: Postgres does not support SELECT triggers)
 
 -- Create a function to check suspicious access patterns
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='detect_suspicious_supplier_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.detect_suspicious_supplier_access()
 RETURNS void
 LANGUAGE plpgsql
@@ -71,6 +72,7 @@ END;
 $$;
 
 -- Update the secure function to include suspicious activity detection
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_suppliers' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_suppliers(_user_id uuid)
 RETURNS TABLE(
     id uuid,

@@ -40,9 +40,10 @@ CREATE TABLE IF NOT EXISTS public.formula_user_permissions (
 );
 
 -- Enable RLS on new permissions table
-ALTER TABLE public.formula_user_permissions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.formula_user_permissions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- 3. Create secure access validation function with multiple security layers
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_access_secure(
     _user_id uuid, 
     _formula_id uuid, 
@@ -212,6 +213,7 @@ END;
 $$;
 
 -- 4. Create function to grant formula permissions with approval workflow
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='grant_formula_permission_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.grant_formula_permission_secure(
     _formula_id uuid,
     _user_id uuid, 
@@ -288,33 +290,38 @@ END;
 $$;
 
 -- 5. Update RLS policies to use the new secure validation function
-DROP POLICY IF EXISTS "Secure formula access without logging" ON public.formulas;
-DROP POLICY IF EXISTS "Secure formula update access" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula access without logging" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula update access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Secure multi-layer formula access" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure multi-layer formula access" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure multi-layer formula access" 
 ON public.formulas 
 FOR SELECT 
-USING (public.validate_formula_access_secure(auth.uid(), id, 'view'));
+USING (public.validate_formula_access_secure(auth.uid(), id, 'view')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Secure multi-layer formula update" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure multi-layer formula update" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure multi-layer formula update" 
 ON public.formulas 
 FOR UPDATE 
 USING (public.validate_formula_access_secure(auth.uid(), id, 'edit'))
-WITH CHECK (public.validate_formula_access_secure(auth.uid(), id, 'edit'));
+WITH CHECK (public.validate_formula_access_secure(auth.uid(), id, 'edit')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 6. Create RLS policies for the new permissions table
-CREATE POLICY "Users can view their own formula permissions" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own formula permissions" ON public.formula_user_permissions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own formula permissions" 
 ON public.formula_user_permissions 
 FOR SELECT 
-USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins and R&D managers can manage permissions" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins and R&D managers can manage permissions" ON public.formula_user_permissions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins and R&D managers can manage permissions" 
 ON public.formula_user_permissions 
 FOR ALL 
 USING (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'rd_manager'))
-WITH CHECK (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'rd_manager'));
+WITH CHECK (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'rd_manager')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 7. Create trigger to update formula access tracking
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_formula_access_stats' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_formula_access_stats()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -330,6 +337,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS formula_access_tracking ON public.formula_access_audit;
 CREATE TRIGGER formula_access_tracking
     AFTER INSERT ON public.formula_access_audit
     FOR EACH ROW

@@ -1,6 +1,7 @@
 -- Fix trigger syntax and finalize supplier security protection
 
 -- Create a trigger to log table access attempts (without SELECT which isn't supported in AFTER triggers)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_supplier_table_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_supplier_table_access()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -23,13 +24,15 @@ BEGIN
 END;
 $$;
 
--- Apply the monitoring trigger for INSERT, UPDATE, DELETE operations
+-- Apply the monitoring trigger FOR ALL operations
+DROP TRIGGER IF EXISTS supplier_access_monitor ON public.suppliers;
 DROP TRIGGER IF EXISTS supplier_access_monitor ON public.suppliers;
 CREATE TRIGGER supplier_access_monitor
     AFTER INSERT OR UPDATE OR DELETE ON public.suppliers
     FOR EACH ROW EXECUTE FUNCTION public.log_supplier_table_access();
 
 -- Create a function to check suspicious access patterns
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='detect_suspicious_supplier_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.detect_suspicious_supplier_access()
 RETURNS void
 LANGUAGE plpgsql
@@ -64,6 +67,7 @@ END;
 $$;
 
 -- Final security function with enhanced monitoring
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_suppliers' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_suppliers(_user_id uuid)
 RETURNS TABLE(
     id uuid,

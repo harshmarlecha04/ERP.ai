@@ -5,6 +5,7 @@ DROP FUNCTION IF EXISTS public.generate_inquiry_number() CASCADE;
 DROP FUNCTION IF EXISTS public.set_inquiry_number() CASCADE;
 
 -- Recreate generate_inquiry_number as SECURITY DEFINER
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='generate_inquiry_number' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.generate_inquiry_number()
 RETURNS text
 LANGUAGE plpgsql
@@ -40,6 +41,7 @@ END;
 $$;
 
 -- Recreate set_inquiry_number as SECURITY DEFINER
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='set_inquiry_number' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.set_inquiry_number()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -55,6 +57,7 @@ END;
 $$;
 
 -- Recreate the trigger
+DROP TRIGGER IF EXISTS set_inquiry_number_trigger ON customer_inquiries;
 DROP TRIGGER IF EXISTS set_inquiry_number_trigger ON customer_inquiries;
 CREATE TRIGGER set_inquiry_number_trigger
   BEFORE INSERT ON customer_inquiries

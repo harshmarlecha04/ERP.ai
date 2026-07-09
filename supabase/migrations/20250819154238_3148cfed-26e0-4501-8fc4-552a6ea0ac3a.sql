@@ -1,11 +1,11 @@
 -- Add archive functionality to raw_materials table
 ALTER TABLE public.raw_materials 
-ADD COLUMN is_archived boolean NOT NULL DEFAULT false,
-ADD COLUMN archived_at timestamp with time zone,
-ADD COLUMN archived_by uuid;
+ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS archived_at timestamp with time zone,
+ADD COLUMN IF NOT EXISTS archived_by uuid;
 
 -- Create index for efficient filtering of archived materials
-CREATE INDEX idx_raw_materials_is_archived ON public.raw_materials(is_archived);
+CREATE INDEX IF NOT EXISTS idx_raw_materials_is_archived ON public.raw_materials(is_archived);
 
 -- Create view for material usage statistics
 CREATE OR REPLACE VIEW public.raw_material_usage_stats AS

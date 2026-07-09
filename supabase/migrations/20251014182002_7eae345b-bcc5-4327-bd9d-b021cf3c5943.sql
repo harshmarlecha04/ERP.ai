@@ -1,6 +1,7 @@
 -- Drop the current version and recreate with pending_po_details
 DROP FUNCTION IF EXISTS get_material_requirements_by_date_range(text, text);
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_material_requirements_by_date_range' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION get_material_requirements_by_date_range(
   p_start_date text,
   p_end_date text

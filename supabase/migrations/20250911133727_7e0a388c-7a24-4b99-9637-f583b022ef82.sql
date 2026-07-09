@@ -6,6 +6,7 @@ DROP FUNCTION IF EXISTS public.update_employee_data_with_approval(text, jsonb);
 -- Create secure RPC functions to handle encrypted employee data
 -- These functions ensure proper access control and audit logging
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_employee_sensitive_data_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_employee_sensitive_data_secure(_employee_id TEXT DEFAULT NULL)
 RETURNS TABLE(
     id uuid,
@@ -93,6 +94,7 @@ BEGIN
 END;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_employee_critical_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_employee_critical_data(_employee_id TEXT DEFAULT NULL)
 RETURNS TABLE(
     id uuid,
@@ -152,6 +154,7 @@ END;
 $$;
 
 -- Create secure update functions that handle encryption
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_employee_data_with_approval' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_employee_data_with_approval(
     _employee_id text,
     _employee_data jsonb

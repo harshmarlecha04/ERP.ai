@@ -8,6 +8,7 @@ DROP VIEW IF EXISTS public.user_role_info CASCADE;
 DROP VIEW IF EXISTS public.current_user_permissions CASCADE;
 
 -- Create a secure function for getting current user's roles
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_current_user_roles' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_current_user_roles()
 RETURNS TABLE(
   user_id uuid,
@@ -36,6 +37,7 @@ END;
 $$;
 
 -- Create secure admin function for role management
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_user_roles_admin' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_user_roles_admin(target_user_id uuid DEFAULT NULL)
 RETURNS TABLE(
   user_id uuid,
@@ -75,7 +77,7 @@ REVOKE ALL ON public.user_roles FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_roles TO authenticated;
 
 -- Log the security fix
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -95,4 +97,4 @@ INSERT INTO public.security_alerts (
     'security_impact', 'prevented_unauthorized_access_to_user_roles_and_permissions'
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

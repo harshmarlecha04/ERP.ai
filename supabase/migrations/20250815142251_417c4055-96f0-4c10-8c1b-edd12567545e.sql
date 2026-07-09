@@ -55,6 +55,7 @@ ADD COLUMN IF NOT EXISTS security_clearance_level text DEFAULT 'standard',
 ADD COLUMN IF NOT EXISTS access_conditions jsonb DEFAULT '{}'::jsonb;
 
 -- Step 5: Create enhanced trade secret access control function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_trade_secret_formula_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_trade_secret_formula_secure(
     _user_id uuid, 
     _formula_id uuid, 
@@ -189,6 +190,7 @@ END;
 $$;
 
 -- Step 6: Create function to start secure trade secret session
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='start_trade_secret_session' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.start_trade_secret_session(
     _formula_id uuid
 )
@@ -211,7 +213,7 @@ BEGIN
     session_duration := make_interval(hours => (security_config->>'max_access_duration_hours')::integer);
     
     -- Generate secure session token
-    session_token := encode(gen_random_bytes(32), 'hex');
+    session_token := encode(extensions.gen_random_bytes(32), 'hex');
     
     -- Terminate any existing active sessions
     UPDATE public.trade_secret_access_sessions 
@@ -244,6 +246,7 @@ END;
 $$;
 
 -- Step 7: Create enhanced approval function for trade secrets
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='approve_trade_secret_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.approve_trade_secret_access(
     _user_id uuid, 
     _formula_id uuid, 
@@ -349,6 +352,7 @@ END;
 $$;
 
 -- Step 8: Create emergency lockdown function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_lockdown_trade_secrets' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_lockdown_trade_secrets(
     _reason text
 )
@@ -389,9 +393,10 @@ END;
 $$;
 
 -- Step 9: Update RLS policy to use enhanced function
-DROP POLICY IF EXISTS "Enhanced trade secret formula protection" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enhanced trade secret formula protection" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Ultra-secure trade secret formula protection" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Ultra-secure trade secret formula protection" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Ultra-secure trade secret formula protection" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -410,31 +415,35 @@ USING (
             )
         ) IS NULL
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Step 10: Enable RLS on new tables
-ALTER TABLE public.security_config ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.trade_secret_access_sessions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.security_config ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE public.trade_secret_access_sessions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Step 11: Create policies for new tables
-CREATE POLICY "Only admins can manage security config" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can manage security config" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can manage security config" 
 ON public.security_config 
 FOR ALL
 USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+WITH CHECK (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can view their own trade secret sessions" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own trade secret sessions" ON public.trade_secret_access_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own trade secret sessions" 
 ON public.trade_secret_access_sessions 
 FOR SELECT
-USING (user_id = auth.uid());
+USING (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "System can manage trade secret sessions" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "System can manage trade secret sessions" ON public.trade_secret_access_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "System can manage trade secret sessions" 
 ON public.trade_secret_access_sessions 
 FOR ALL
 USING (true)
-WITH CHECK (true);
+WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Step 12: Create automated cleanup job function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='cleanup_expired_trade_secret_sessions' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.cleanup_expired_trade_secret_sessions()
 RETURNS void
 LANGUAGE plpgsql
@@ -473,6 +482,7 @@ CREATE INDEX IF NOT EXISTS idx_formula_access_permissions_security
 ON public.formula_access_permissions(user_id, formula_id, security_clearance_level, is_active);
 
 -- Final step: Add trigger for automatic cleanup
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='trigger_cleanup_expired_sessions' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.trigger_cleanup_expired_sessions()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -484,6 +494,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS cleanup_sessions_trigger ON public.trade_secret_access_sessions;
 CREATE TRIGGER cleanup_sessions_trigger 
 AFTER INSERT ON public.trade_secret_access_sessions
 FOR EACH STATEMENT

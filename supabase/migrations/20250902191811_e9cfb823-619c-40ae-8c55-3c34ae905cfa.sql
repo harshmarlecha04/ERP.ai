@@ -8,6 +8,7 @@ DROP VIEW IF EXISTS public.safe_profiles CASCADE;
 DROP VIEW IF EXISTS public.secure_profile_info CASCADE;
 
 -- Create a single, secure function for authorized profile access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_authorized_profile_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_authorized_profile_data(target_user_id uuid DEFAULT NULL)
 RETURNS TABLE(
   id uuid,
@@ -101,7 +102,7 @@ REVOKE ALL ON public.profiles FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
 
 -- Log the critical security fix
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -129,4 +130,4 @@ INSERT INTO public.security_alerts (
     'compliance', 'enhanced_gdpr_ccpa_privacy_protection'
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

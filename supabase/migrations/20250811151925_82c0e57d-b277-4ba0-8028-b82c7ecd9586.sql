@@ -6,6 +6,7 @@
 DROP VIEW IF EXISTS public.inventory_lots;
 
 -- Create a secure function instead to get inventory lots data
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_inventory_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_inventory_lots()
 RETURNS TABLE (
   id uuid,
@@ -31,7 +32,7 @@ AS $$
 $$;
 
 -- Alternative: Create a proper view without SECURITY DEFINER
-CREATE VIEW public.inventory_lots_view AS
+CREATE OR REPLACE VIEW public.inventory_lots_view AS
 SELECT 
   rml.id,
   rml.raw_material_id as ingredient_id,

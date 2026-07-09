@@ -24,9 +24,10 @@ CREATE TABLE IF NOT EXISTS public.profile_access_audit (
 );
 
 -- Enable RLS on profile audit table
-ALTER TABLE public.profile_access_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.profile_access_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- 4. Create secure profile access function with enhanced logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_profile_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_profile_secure(_viewer_id uuid, _profile_id uuid, _access_type text DEFAULT 'view'::text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -82,41 +83,47 @@ END;
 $$;
 
 -- 5. Update profiles table RLS policies with enhanced security
-DROP POLICY IF EXISTS "Users can view own profile, admins can view all profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Admins can update any profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view own profile, admins can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can update any profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Strict SELECT policy with logging
-CREATE POLICY "Secure profile access with audit trail" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure profile access with audit trail" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure profile access with audit trail" 
 ON public.profiles 
 FOR SELECT 
-USING (public.can_access_profile_secure(auth.uid(), id, 'view'));
+USING (public.can_access_profile_secure(auth.uid(), id, 'view')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Strict UPDATE policy with logging  
-CREATE POLICY "Secure profile updates with audit trail" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure profile updates with audit trail" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure profile updates with audit trail" 
 ON public.profiles 
 FOR UPDATE 
 USING (public.can_access_profile_secure(auth.uid(), id, 'update'))
-WITH CHECK (public.can_access_profile_secure(auth.uid(), id, 'update'));
+WITH CHECK (public.can_access_profile_secure(auth.uid(), id, 'update')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Strict INSERT policy (users can only create their own profile)
-CREATE POLICY "Users can only create their own profile" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can only create their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can only create their own profile" 
 ON public.profiles 
 FOR INSERT 
-WITH CHECK (auth.uid() = id AND public.can_access_profile_secure(auth.uid(), id, 'create'));
+WITH CHECK (auth.uid() = id AND public.can_access_profile_secure(auth.uid(), id, 'create')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 6. RLS policies for profile audit table
-CREATE POLICY "Only security admins can view profile audit logs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only security admins can view profile audit logs" ON public.profile_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only security admins can view profile audit logs" 
 ON public.profile_access_audit 
 FOR SELECT 
-USING (public.has_role(auth.uid(), 'admin'));
+USING (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "System can insert profile audit logs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "System can insert profile audit logs" ON public.profile_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "System can insert profile audit logs" 
 ON public.profile_access_audit 
 FOR INSERT 
-WITH CHECK (true);
+WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 7. Create function to get sanitized profile data (without sensitive info)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_public_profile' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_public_profile(_profile_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -150,6 +157,7 @@ END;
 $$;
 
 -- 8. Create privacy consent management function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_privacy_consent' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_privacy_consent(_consent_given boolean)
 RETURNS boolean
 LANGUAGE plpgsql

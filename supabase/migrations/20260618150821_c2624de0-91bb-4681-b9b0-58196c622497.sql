@@ -2,6 +2,7 @@
 ALTER TABLE public.raw_materials ADD COLUMN IF NOT EXISTS barcode text;
 CREATE UNIQUE INDEX IF NOT EXISTS raw_materials_barcode_uniq ON public.raw_materials(barcode) WHERE barcode IS NOT NULL;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='find_raw_material_by_barcode' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.find_raw_material_by_barcode(_code text)
 RETURNS TABLE (
   raw_material_id uuid,

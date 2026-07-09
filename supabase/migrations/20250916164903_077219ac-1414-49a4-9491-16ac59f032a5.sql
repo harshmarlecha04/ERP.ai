@@ -1,5 +1,5 @@
 -- Create inventory thresholds table
-CREATE TABLE public.inventory_thresholds (
+CREATE TABLE IF NOT EXISTS public.inventory_thresholds (
     id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     raw_material_id UUID NOT NULL REFERENCES public.raw_materials(id) ON DELETE CASCADE,
     min_quantity_kg NUMERIC NOT NULL DEFAULT 0,
@@ -12,14 +12,16 @@ CREATE TABLE public.inventory_thresholds (
 );
 
 -- Enable RLS on inventory_thresholds
-ALTER TABLE public.inventory_thresholds ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.inventory_thresholds ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS policies for inventory_thresholds
-CREATE POLICY "Authenticated users can view inventory thresholds"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view inventory thresholds" ON public.inventory_thresholds; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view inventory thresholds"
 ON public.inventory_thresholds FOR SELECT
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Admins and procurement can manage inventory thresholds"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins and procurement can manage inventory thresholds" ON public.inventory_thresholds; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins and procurement can manage inventory thresholds"
 ON public.inventory_thresholds FOR ALL
 USING (
     has_role(auth.uid(), 'admin'::app_role) OR 
@@ -28,9 +30,10 @@ USING (
 WITH CHECK (
     has_role(auth.uid(), 'admin'::app_role) OR 
     has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create function to check inventory levels and create alerts
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='check_inventory_thresholds' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.check_inventory_thresholds()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -103,7 +106,7 @@ BEGIN
             AND acknowledged = false;
 
             -- Insert new alert
-            INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
                 alert_type,
                 severity,
                 details
@@ -122,7 +125,7 @@ BEGIN
                     'triggered_by', TG_OP,
                     'triggered_at', now()
                 )
-            );
+            ); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
         END IF;
     END LOOP;
 
@@ -136,11 +139,13 @@ END;
 $function$;
 
 -- Create trigger on raw_material_lots table
+DROP TRIGGER IF EXISTS inventory_threshold_check_trigger ON public.raw_material_lots;
 CREATE TRIGGER inventory_threshold_check_trigger
     AFTER INSERT OR UPDATE OR DELETE ON public.raw_material_lots
     FOR EACH ROW EXECUTE FUNCTION public.check_inventory_thresholds();
 
 -- Create function to get current inventory status with thresholds
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_inventory_status_with_thresholds' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_inventory_status_with_thresholds()
 RETURNS TABLE(
     raw_material_id UUID,
@@ -204,6 +209,7 @@ END;
 $function$;
 
 -- Add updated_at trigger for inventory_thresholds
+DROP TRIGGER IF EXISTS update_inventory_thresholds_updated_at ON public.inventory_thresholds;
 CREATE TRIGGER update_inventory_thresholds_updated_at
     BEFORE UPDATE ON public.inventory_thresholds
     FOR EACH ROW

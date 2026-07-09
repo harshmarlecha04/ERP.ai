@@ -2,6 +2,7 @@
 -- Remove problematic trigger and implement working security controls
 
 -- 1. Create security validation trigger (works with INSERT/UPDATE)
+DROP TRIGGER IF EXISTS formula_security_validation_trigger ON public.formulas;
 CREATE TRIGGER formula_security_validation_trigger
     BEFORE INSERT OR UPDATE ON public.formulas
     FOR EACH ROW
@@ -26,6 +27,7 @@ COMMENT ON VIEW public.secure_formulas IS
 Use this view instead of direct table access for additional security.';
 
 -- 3. Create comprehensive security monitoring function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_formula_security_status' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_formula_security_status()
 RETURNS jsonb AS $$
 DECLARE
@@ -76,6 +78,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 4. Create function to check if emergency lockdown is active
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='is_emergency_lockdown_active' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.is_emergency_lockdown_active()
 RETURNS boolean AS $$
 DECLARE
@@ -90,6 +93,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 5. Update the existing formula access validation to use enhanced logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_access_secure(_user_id uuid, _formula_id uuid, _access_type text DEFAULT 'view'::text)
 RETURNS boolean
 LANGUAGE plpgsql

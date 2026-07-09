@@ -7,6 +7,7 @@ SET
 WHERE po_number = '1882' AND (quantity = 0 OR ingredient_name IS NULL);
 
 -- Create a function to get purchase orders with their items for the receiving modal
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_purchase_order_with_items' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_purchase_order_with_items(p_order_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql

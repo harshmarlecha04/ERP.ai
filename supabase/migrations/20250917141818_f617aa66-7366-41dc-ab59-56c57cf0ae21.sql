@@ -2,6 +2,7 @@
 DROP TABLE IF EXISTS public.production_ingredient_usage_sessions CASCADE;
 
 -- Enhanced auto-populate function with transaction safety, idempotency, and overwrite protection
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='auto_populate_production_ingredients_safe' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.auto_populate_production_ingredients_safe(
   p_schedule_item_id uuid, 
   p_formula_id uuid, 
@@ -82,7 +83,7 @@ BEGIN
     END IF;
     
     -- Generate session checksum for integrity
-    v_session_checksum := encode(digest(
+    v_session_checksum := encode(extensions.digest(
       p_schedule_item_id::text || p_formula_id::text || p_batches::text || now()::text, 
       'sha256'
     ), 'hex');

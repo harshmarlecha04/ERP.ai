@@ -1,5 +1,5 @@
 -- Insert inventory alerts for materials that are below their thresholds but don't have active alerts
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
     alert_type,
     severity,
     details
@@ -50,4 +50,4 @@ WHERE it.alert_enabled = true
       WHERE sa.alert_type = 'low_inventory'
         AND sa.details->>'raw_material_id' = rm.id::text
         AND sa.acknowledged = false
-  );
+  ); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

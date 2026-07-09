@@ -7,18 +7,22 @@ VALUES ('order-pdfs', 'order-pdfs', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- RLS policies for the order-pdfs bucket
-CREATE POLICY "Authenticated users can view order PDFs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view order PDFs" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view order PDFs" 
   ON storage.objects FOR SELECT 
-  USING (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated');
+  USING (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated'); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can upload order PDFs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can upload order PDFs" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can upload order PDFs" 
   ON storage.objects FOR INSERT 
-  WITH CHECK (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated');
+  WITH CHECK (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated'); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can delete order PDFs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can delete order PDFs" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can delete order PDFs" 
   ON storage.objects FOR DELETE 
-  USING (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated');
+  USING (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated'); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can update order PDFs" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can update order PDFs" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can update order PDFs" 
   ON storage.objects FOR UPDATE 
-  USING (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated');
+  USING (bucket_id = 'order-pdfs' AND auth.role() = 'authenticated'); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

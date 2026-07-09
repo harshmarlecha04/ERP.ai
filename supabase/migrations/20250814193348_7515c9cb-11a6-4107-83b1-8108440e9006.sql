@@ -38,6 +38,7 @@ EXCEPTION
 END $$;
 
 -- Create atomic upsert function for materials with lots
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='upsert_raw_material_with_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.upsert_raw_material_with_lots(
   p_material jsonb
 ) RETURNS jsonb

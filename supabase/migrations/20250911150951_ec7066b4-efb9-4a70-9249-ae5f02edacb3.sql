@@ -1,10 +1,11 @@
 -- Remove business hours restrictions for admins and give unrestricted access
 -- First, drop any existing conflicting policies
-DROP POLICY IF EXISTS "Admin unrestricted access with enhanced security for others" ON public.formulas;
-DROP POLICY IF EXISTS "Enhanced formula security with trade secret protection" ON public.formulas;
-DROP POLICY IF EXISTS "Maximum security formula access control" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admin unrestricted access with enhanced security for others" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enhanced formula security with trade secret protection" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Maximum security formula access control" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Update validate_trade_secret_access_enhanced to allow admin unrestricted access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -110,6 +111,7 @@ END;
 $$;
 
 -- Update get_accessible_formulas to give admins unrestricted access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid)
 RETURNS TABLE(id uuid, code text, name text, default_batch_size_kg numeric, recipe_json jsonb, active_ingredients_json jsonb, security_level text, classification_level text, version text, yield_uom text, notes text, product_code_line text, procedure_text text, status text, created_at timestamp with time zone, updated_at timestamp with time zone, last_accessed_at timestamp with time zone, access_count integer, requires_approval boolean, is_deleted boolean, average_piece_weight numeric, total_pieces integer, formula_code text)
 LANGUAGE plpgsql
@@ -199,7 +201,8 @@ END;
 $$;
 
 -- Create a comprehensive RLS policy that gives admins unrestricted access
-CREATE POLICY "Unrestricted admin formula access v2" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Unrestricted admin formula access v2" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Unrestricted admin formula access v2" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -220,7 +223,7 @@ USING (
             validate_trade_secret_access_enhanced(auth.uid(), id)
         )
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Add comments for documentation
 COMMENT ON FUNCTION public.validate_trade_secret_access_enhanced(uuid, uuid) IS 'Enhanced trade secret access validation with admin unrestricted access and comprehensive audit logging';

@@ -8,7 +8,7 @@ DROP TRIGGER IF EXISTS formula_security_validation ON public.formulas;
 DROP TRIGGER IF EXISTS update_formula_access_stats ON public.formulas;
 
 -- 2. Disable the function that's causing problems
-DROP FUNCTION IF EXISTS public.validate_formula_security_level();
+DROP FUNCTION IF EXISTS public.validate_formula_security_level() CASCADE;
 
 -- 3. Now safely upgrade proprietary formulas to trade secret status
 UPDATE public.formulas 
@@ -22,6 +22,7 @@ WHERE (
 ) AND NOT is_deleted;
 
 -- 4. Create emergency lockdown function  
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='enable_formula_emergency_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.enable_formula_emergency_lockdown()
 RETURNS void
 LANGUAGE plpgsql

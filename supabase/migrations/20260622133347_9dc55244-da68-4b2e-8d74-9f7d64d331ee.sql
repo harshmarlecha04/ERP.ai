@@ -1,6 +1,6 @@
 
 -- 1) Templates
-CREATE TABLE public.rd_base_templates (
+CREATE TABLE IF NOT EXISTS public.rd_base_templates (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   mold_size text,
@@ -17,18 +17,22 @@ CREATE TABLE public.rd_base_templates (
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rd_base_templates TO authenticated;
 GRANT ALL ON public.rd_base_templates TO service_role;
-ALTER TABLE public.rd_base_templates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can read rd_base_templates" ON public.rd_base_templates
-  FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert rd_base_templates" ON public.rd_base_templates
-  FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update rd_base_templates" ON public.rd_base_templates
-  FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated can delete rd_base_templates" ON public.rd_base_templates
-  FOR DELETE TO authenticated USING (true);
+DO $rls$ BEGIN ALTER TABLE public.rd_base_templates ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can read rd_base_templates" ON public.rd_base_templates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can read rd_base_templates" ON public.rd_base_templates
+  FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can insert rd_base_templates" ON public.rd_base_templates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can insert rd_base_templates" ON public.rd_base_templates
+  FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can update rd_base_templates" ON public.rd_base_templates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can update rd_base_templates" ON public.rd_base_templates
+  FOR UPDATE TO authenticated USING (true) WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can delete rd_base_templates" ON public.rd_base_templates; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can delete rd_base_templates" ON public.rd_base_templates
+  FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2) Ingredients
-CREATE TABLE public.rd_base_template_ingredients (
+CREATE TABLE IF NOT EXISTS public.rd_base_template_ingredients (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id uuid NOT NULL REFERENCES public.rd_base_templates(id) ON DELETE CASCADE,
   sort_order integer NOT NULL DEFAULT 0,
@@ -39,45 +43,55 @@ CREATE TABLE public.rd_base_template_ingredients (
   role text DEFAULT 'other',
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_rd_base_template_ing_template ON public.rd_base_template_ingredients(template_id);
+CREATE INDEX IF NOT EXISTS idx_rd_base_template_ing_template ON public.rd_base_template_ingredients(template_id);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rd_base_template_ingredients TO authenticated;
 GRANT ALL ON public.rd_base_template_ingredients TO service_role;
-ALTER TABLE public.rd_base_template_ingredients ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can read rd_base_template_ingredients" ON public.rd_base_template_ingredients
-  FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert rd_base_template_ingredients" ON public.rd_base_template_ingredients
-  FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update rd_base_template_ingredients" ON public.rd_base_template_ingredients
-  FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated can delete rd_base_template_ingredients" ON public.rd_base_template_ingredients
-  FOR DELETE TO authenticated USING (true);
+DO $rls$ BEGIN ALTER TABLE public.rd_base_template_ingredients ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can read rd_base_template_ingredients" ON public.rd_base_template_ingredients; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can read rd_base_template_ingredients" ON public.rd_base_template_ingredients
+  FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can insert rd_base_template_ingredients" ON public.rd_base_template_ingredients; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can insert rd_base_template_ingredients" ON public.rd_base_template_ingredients
+  FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can update rd_base_template_ingredients" ON public.rd_base_template_ingredients; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can update rd_base_template_ingredients" ON public.rd_base_template_ingredients
+  FOR UPDATE TO authenticated USING (true) WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can delete rd_base_template_ingredients" ON public.rd_base_template_ingredients; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can delete rd_base_template_ingredients" ON public.rd_base_template_ingredients
+  FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3) Steps
-CREATE TABLE public.rd_base_template_steps (
+CREATE TABLE IF NOT EXISTS public.rd_base_template_steps (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id uuid NOT NULL REFERENCES public.rd_base_templates(id) ON DELETE CASCADE,
   step_number integer NOT NULL,
   text text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_rd_base_template_steps_template ON public.rd_base_template_steps(template_id);
+CREATE INDEX IF NOT EXISTS idx_rd_base_template_steps_template ON public.rd_base_template_steps(template_id);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rd_base_template_steps TO authenticated;
 GRANT ALL ON public.rd_base_template_steps TO service_role;
-ALTER TABLE public.rd_base_template_steps ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can read rd_base_template_steps" ON public.rd_base_template_steps
-  FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert rd_base_template_steps" ON public.rd_base_template_steps
-  FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Authenticated can update rd_base_template_steps" ON public.rd_base_template_steps
-  FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated can delete rd_base_template_steps" ON public.rd_base_template_steps
-  FOR DELETE TO authenticated USING (true);
+DO $rls$ BEGIN ALTER TABLE public.rd_base_template_steps ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can read rd_base_template_steps" ON public.rd_base_template_steps; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can read rd_base_template_steps" ON public.rd_base_template_steps
+  FOR SELECT TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can insert rd_base_template_steps" ON public.rd_base_template_steps; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can insert rd_base_template_steps" ON public.rd_base_template_steps
+  FOR INSERT TO authenticated WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can update rd_base_template_steps" ON public.rd_base_template_steps; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can update rd_base_template_steps" ON public.rd_base_template_steps
+  FOR UPDATE TO authenticated USING (true) WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated can delete rd_base_template_steps" ON public.rd_base_template_steps; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated can delete rd_base_template_steps" ON public.rd_base_template_steps
+  FOR DELETE TO authenticated USING (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 4) Updated_at trigger on templates
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_updated_at_column' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$;
+DROP TRIGGER IF EXISTS trg_rd_base_templates_updated ON public.rd_base_templates;
 CREATE TRIGGER trg_rd_base_templates_updated
   BEFORE UPDATE ON public.rd_base_templates
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

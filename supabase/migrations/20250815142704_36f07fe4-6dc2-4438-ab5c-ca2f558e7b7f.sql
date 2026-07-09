@@ -4,6 +4,7 @@
 -- Fix 1: Set search_path for functions that don't have it set (Function Search Path Mutable)
 -- Update existing functions to have proper search_path
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='assign_first_user_as_admin' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.assign_first_user_as_admin()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -23,6 +24,7 @@ BEGIN
 END;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='handle_new_user' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -40,6 +42,7 @@ BEGIN
 END;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_inventory_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_inventory_lots()
 RETURNS TABLE(id uuid, ingredient_id uuid, ingredient_name text, qty_on_hand_kg numeric, qty_reserved_kg numeric, created_at timestamp with time zone)
 LANGUAGE sql
@@ -57,6 +60,7 @@ AS $$
   JOIN public.raw_materials rm ON rm.id = rml.raw_material_id;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_formula_requirements' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_formula_requirements(p_formula_id uuid, p_batches integer)
 RETURNS TABLE(ingredient_id uuid, ingredient_name text, required_kg numeric)
 LANGUAGE sql

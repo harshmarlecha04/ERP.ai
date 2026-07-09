@@ -2,6 +2,7 @@
 -- This migration fixes the admin permission issue
 
 -- First, let's create a function to safely assign admin role
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_assign_admin' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_assign_admin()
 RETURNS void
 LANGUAGE plpgsql
@@ -35,6 +36,7 @@ $$;
 SELECT public.emergency_assign_admin();
 
 -- Fix the assign_first_user_as_admin trigger to work correctly
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='assign_first_user_as_admin' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.assign_first_user_as_admin()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -57,12 +59,14 @@ $$;
 
 -- Ensure the trigger exists
 DROP TRIGGER IF EXISTS on_auth_user_created_assign_admin ON auth.users;
+DROP TRIGGER IF EXISTS on_auth_user_created_assign_admin ON auth.users;
 CREATE TRIGGER on_auth_user_created_assign_admin
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.assign_first_user_as_admin();
 
 -- Create a secure RPC function for admins to assign roles
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='assign_user_role' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.assign_user_role(
   target_user_id uuid,
   target_role app_role

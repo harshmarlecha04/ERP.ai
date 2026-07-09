@@ -1,6 +1,6 @@
 -- Add project_name column with temporary default for existing records
 ALTER TABLE rd_projects 
-ADD COLUMN project_name TEXT NOT NULL DEFAULT 'Untitled Project';
+ADD COLUMN IF NOT EXISTS project_name TEXT NOT NULL DEFAULT 'Untitled Project';
 
 -- Update existing projects to have a meaningful name (customer + flavor)
 UPDATE rd_projects 

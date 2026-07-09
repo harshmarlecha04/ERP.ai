@@ -2,7 +2,7 @@
 ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'hr_manager';
 
 -- Create a separate table for highly sensitive employee data
-CREATE TABLE public.employee_sensitive_data (
+CREATE TABLE IF NOT EXISTS public.employee_sensitive_data (
   id uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE,
   employee_id text,
   department text,
@@ -22,29 +22,33 @@ CREATE TABLE public.employee_sensitive_data (
 );
 
 -- Enable RLS on the sensitive data table
-ALTER TABLE public.employee_sensitive_data ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.employee_sensitive_data ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create highly restrictive policies for sensitive data
-CREATE POLICY "Only admins can view sensitive employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view sensitive employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view sensitive employee data" 
 ON public.employee_sensitive_data 
 FOR SELECT 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can update sensitive employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can update sensitive employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can update sensitive employee data" 
 ON public.employee_sensitive_data 
 FOR UPDATE 
 USING (has_role(auth.uid(), 'admin'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can create sensitive employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can create sensitive employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can create sensitive employee data" 
 ON public.employee_sensitive_data 
 FOR INSERT 
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can delete sensitive employee data" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete sensitive employee data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can delete sensitive employee data" 
 ON public.employee_sensitive_data 
 FOR DELETE 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Add data minimization controls to profiles table
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email_visible_to_public boolean DEFAULT false;
@@ -52,6 +56,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone_number text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS department text;
 
 -- Create a secure function for anonymized profile data access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_anonymized_profile_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_anonymized_profile_data(target_user_id uuid)
 RETURNS TABLE(
   id uuid,
@@ -99,6 +104,7 @@ END;
 $$;
 
 -- Create enhanced audit function for profile access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_profile_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_profile_access_enhanced(
   viewer_id uuid,
   profile_id uuid,
@@ -173,26 +179,29 @@ END;
 $$;
 
 -- Update existing profile policies to be more restrictive
-DROP POLICY IF EXISTS "Users can only view their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Admins can view all profile data" ON public.profiles;
-DROP POLICY IF EXISTS "Managers can view limited profile data of their team" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can only view their own profile" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view all profile data" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Managers can view limited profile data of their team" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create new granular policies
-CREATE POLICY "Users can view own profile data only" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view own profile data only" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view own profile data only" 
 ON public.profiles 
 FOR SELECT 
-USING (id = auth.uid());
+USING (id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Admins can view all profiles with audit" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view all profiles with audit" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can view all profiles with audit" 
 ON public.profiles 
 FOR SELECT 
 USING (
   has_role(auth.uid(), 'admin'::app_role) AND
   -- Log admin access to profiles
   (SELECT log_profile_access_enhanced(auth.uid(), id, 'admin_view', 'administrative_access') IS NULL)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Managers can view limited team profiles" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Managers can view limited team profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Managers can view limited team profiles" 
 ON public.profiles 
 FOR SELECT 
 USING (
@@ -200,7 +209,7 @@ USING (
    has_role(auth.uid(), 'rd_manager'::app_role)) AND
   -- Log manager access
   (SELECT log_profile_access_enhanced(auth.uid(), id, 'manager_view', 'team_management') IS NULL)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create a data classification view for secure profile access
 CREATE OR REPLACE VIEW public.secure_profiles AS
@@ -244,7 +253,7 @@ WHERE
   );
 
 -- Log this comprehensive security enhancement
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -273,4 +282,4 @@ INSERT INTO public.security_alerts (
     )
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

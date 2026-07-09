@@ -1,4 +1,5 @@
 -- Fix security warning: Set search_path for find_raw_material_by_name
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='find_raw_material_by_name' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.find_raw_material_by_name(
   p_recipe_material_name TEXT
 ) RETURNS UUID 
@@ -42,6 +43,7 @@ END;
 $$;
 
 -- Fix security warning: Set search_path for get_unmatched_recipe_materials
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_unmatched_recipe_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_unmatched_recipe_materials(
   p_start_date DATE,
   p_end_date DATE

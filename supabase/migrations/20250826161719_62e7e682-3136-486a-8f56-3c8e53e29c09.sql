@@ -1,6 +1,7 @@
 -- Create the save_formula function that the frontend expects
 -- Replace any existing version to fix the "is_deleted" field error
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='save_formula' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.save_formula(
     p_formula_data jsonb
 ) RETURNS jsonb

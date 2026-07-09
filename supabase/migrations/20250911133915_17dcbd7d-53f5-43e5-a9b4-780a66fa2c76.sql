@@ -24,6 +24,7 @@ COMMENT ON TABLE public.employee_sensitive_data IS 'Employee PII with field-leve
 COMMENT ON TABLE public.employee_critical_data IS 'Critical employee data with mandatory encryption. Only administrators can access this data with full audit logging.';
 
 -- Create audit trigger to monitor access to encrypted fields
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_employee_data_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_employee_data_access()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -47,6 +48,7 @@ END;
 $$;
 
 -- Apply the audit trigger (monitors all operations)
+DROP TRIGGER IF EXISTS employee_data_access_audit ON public.employee_sensitive_data;
 DROP TRIGGER IF EXISTS employee_data_access_audit ON public.employee_sensitive_data;
 CREATE TRIGGER employee_data_access_audit
     AFTER INSERT OR UPDATE OR DELETE ON public.employee_sensitive_data

@@ -69,27 +69,40 @@ create index if not exists idx_inventory_reservations_item on public.inventory_r
 create index if not exists idx_inventory_reservations_lot on public.inventory_reservations(lot_id);
 
 -- 5) Enable RLS and permissive policies (consistent with existing project)
-alter table public.production_schedules enable row level security;
-alter table public.production_schedule_items enable row level security;
-alter table public.inventory_reservations enable row level security;
+DO $rls$ BEGIN alter table public.production_schedules enable row level security; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN alter table public.production_schedule_items enable row level security; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN alter table public.inventory_reservations enable row level security; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Policies: allow all for simplicity to match current setup
-create policy if not exists "Anyone can view production schedules" on public.production_schedules for select using (true);
-create policy if not exists "Anyone can insert production schedules" on public.production_schedules for insert with check (true);
-create policy if not exists "Anyone can update production schedules" on public.production_schedules for update using (true);
-create policy if not exists "Anyone can delete production schedules" on public.production_schedules for delete using (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can view production schedules" ON public.production_schedules; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can view production schedules" on public.production_schedules for select using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can insert production schedules" ON public.production_schedules; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can insert production schedules" on public.production_schedules for insert with check (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can update production schedules" ON public.production_schedules; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can update production schedules" on public.production_schedules for update using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can delete production schedules" ON public.production_schedules; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can delete production schedules" on public.production_schedules for delete using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-create policy if not exists "Anyone can view production items" on public.production_schedule_items for select using (true);
-create policy if not exists "Anyone can insert production items" on public.production_schedule_items for insert with check (true);
-create policy if not exists "Anyone can update production items" on public.production_schedule_items for update using (true);
-create policy if not exists "Anyone can delete production items" on public.production_schedule_items for delete using (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can view production items" ON public.production_schedule_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can view production items" on public.production_schedule_items for select using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can insert production items" ON public.production_schedule_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can insert production items" on public.production_schedule_items for insert with check (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can update production items" ON public.production_schedule_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can update production items" on public.production_schedule_items for update using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can delete production items" ON public.production_schedule_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can delete production items" on public.production_schedule_items for delete using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-create policy if not exists "Anyone can view inventory reservations" on public.inventory_reservations for select using (true);
-create policy if not exists "Anyone can insert inventory reservations" on public.inventory_reservations for insert with check (true);
-create policy if not exists "Anyone can update inventory reservations" on public.inventory_reservations for update using (true);
-create policy if not exists "Anyone can delete inventory reservations" on public.inventory_reservations for delete using (true);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can view inventory reservations" ON public.inventory_reservations; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can view inventory reservations" on public.inventory_reservations for select using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can insert inventory reservations" ON public.inventory_reservations; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can insert inventory reservations" on public.inventory_reservations for insert with check (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can update inventory reservations" ON public.inventory_reservations; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can update inventory reservations" on public.inventory_reservations for update using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Anyone can delete inventory reservations" ON public.inventory_reservations; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN create policy "Anyone can delete inventory reservations" on public.inventory_reservations for delete using (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 6) updated_at triggers
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_updated_at_column' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.update_updated_at_column()
 returns trigger
 language plpgsql
@@ -102,15 +115,18 @@ begin
 end;
 $$;
 
+DROP TRIGGER IF EXISTS trg_production_schedules_updated ON public.production_schedules;
 create trigger trg_production_schedules_updated
 before update on public.production_schedules
 for each row execute function public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS trg_production_schedule_items_updated ON public.production_schedule_items;
 create trigger trg_production_schedule_items_updated
 before update on public.production_schedule_items
 for each row execute function public.update_updated_at_column();
 
 -- 7) Helper function: upsert schedule by date
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_upsert_schedule' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_upsert_schedule(p_schedule_date date)
 returns uuid
 language plpgsql
@@ -135,6 +151,7 @@ end;
 $$;
 
 -- 8) Function to compute formula requirements
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_formula_requirements' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_formula_requirements(p_formula_id uuid, p_batches int)
 returns table(ingredient_id uuid, ingredient_name text, required_kg numeric)
 language sql
@@ -153,6 +170,7 @@ as $$
 $$;
 
 -- 9) Function to check materials availability with optional exclusion of an item
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_check_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_check_materials(
   p_formula_id uuid,
   p_batches int,
@@ -209,6 +227,7 @@ end;
 $$;
 
 -- 10) Function to reserve materials FIFO by lot for a schedule item
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_reserve_materials' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_reserve_materials(p_schedule_item_id uuid)
 returns jsonb
 language plpgsql
@@ -272,6 +291,7 @@ end;
 $$;
 
 -- 11) Function to move item to a new date with re-check
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_move_item_and_recheck' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_move_item_and_recheck(p_schedule_item_id uuid, p_new_date date)
 returns jsonb
 language plpgsql
@@ -312,6 +332,7 @@ end;
 $$;
 
 -- 12) Optional helper: create production item with check in one go
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_create_schedule_item' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 create or replace function public.fn_create_schedule_item(
   p_schedule_date date,
   p_formula_id uuid,

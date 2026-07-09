@@ -2,6 +2,7 @@
 DROP FUNCTION IF EXISTS public.get_all_user_activity();
 
 -- Create new function with explicit INET type return for IP address
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_all_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_all_user_activity()
 RETURNS TABLE (
   id uuid,

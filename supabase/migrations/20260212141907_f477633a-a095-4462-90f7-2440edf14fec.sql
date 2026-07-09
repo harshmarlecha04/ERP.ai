@@ -4,7 +4,7 @@
 -- =====================================================
 
 -- 1. New table: order_shipment_lines
-CREATE TABLE public.order_shipment_lines (
+CREATE TABLE IF NOT EXISTS public.order_shipment_lines (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   shipment_id uuid NOT NULL REFERENCES public.order_shipments(id) ON DELETE CASCADE,
   order_line_id uuid NOT NULL REFERENCES public.order_line_items(id) ON DELETE CASCADE,
@@ -14,14 +14,14 @@ CREATE TABLE public.order_shipment_lines (
   customer_confirmation_doc_url text NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+DO $rls$ BEGIN ALTER TABLE public.order_shipment_lines ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.order_shipment_lines ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can manage shipment lines" ON public.order_shipment_lines
-  FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage shipment lines" ON public.order_shipment_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage shipment lines" ON public.order_shipment_lines
+  FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. New table: finished_goods_excess_transactions
-CREATE TABLE public.finished_goods_excess_transactions (
+CREATE TABLE IF NOT EXISTS public.finished_goods_excess_transactions (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   bright_stock_id uuid REFERENCES public.bright_stock(id) ON DELETE SET NULL,
   order_id uuid REFERENCES public.order_headers(id) ON DELETE SET NULL,
@@ -32,14 +32,14 @@ CREATE TABLE public.finished_goods_excess_transactions (
   created_by uuid NULL,
   notes text NULL
 );
+DO $rls$ BEGIN ALTER TABLE public.finished_goods_excess_transactions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.finished_goods_excess_transactions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can manage excess transactions" ON public.finished_goods_excess_transactions
-  FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage excess transactions" ON public.finished_goods_excess_transactions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage excess transactions" ON public.finished_goods_excess_transactions
+  FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. New table: order_fulfillment_wizard_runs
-CREATE TABLE public.order_fulfillment_wizard_runs (
+CREATE TABLE IF NOT EXISTS public.order_fulfillment_wizard_runs (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   order_id uuid NOT NULL REFERENCES public.order_headers(id) ON DELETE CASCADE,
   current_step integer NOT NULL DEFAULT 1,
@@ -48,11 +48,11 @@ CREATE TABLE public.order_fulfillment_wizard_runs (
   completed_at timestamptz NULL,
   completed_by uuid NULL
 );
+DO $rls$ BEGIN ALTER TABLE public.order_fulfillment_wizard_runs ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.order_fulfillment_wizard_runs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can manage wizard runs" ON public.order_fulfillment_wizard_runs
-  FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage wizard runs" ON public.order_fulfillment_wizard_runs; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage wizard runs" ON public.order_fulfillment_wizard_runs
+  FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 4. Alter order_line_items: add fulfillment tracking columns
 ALTER TABLE public.order_line_items

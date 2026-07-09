@@ -2,27 +2,30 @@
 -- Replace dangerous "any authenticated user" policy with role-based access control
 
 -- 1. Drop the existing insecure policy
-DROP POLICY IF EXISTS "Authenticated users can manage purchase orders" ON public.purchase_orders;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. Create secure role-based policies for purchase orders
 -- Only admin and production_manager should access financial purchasing data
-CREATE POLICY "Only authorized personnel can view purchase orders" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only authorized personnel can view purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only authorized personnel can view purchase orders" 
 ON public.purchase_orders 
 FOR SELECT 
 USING (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only authorized personnel can create purchase orders" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only authorized personnel can create purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only authorized personnel can create purchase orders" 
 ON public.purchase_orders 
 FOR INSERT 
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only authorized personnel can update purchase orders" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only authorized personnel can update purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only authorized personnel can update purchase orders" 
 ON public.purchase_orders 
 FOR UPDATE 
 USING (
@@ -32,14 +35,16 @@ USING (
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can delete purchase orders" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can delete purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can delete purchase orders" 
 ON public.purchase_orders 
 FOR DELETE 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. Create audit logging for financial data access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_purchase_order_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_purchase_order_access(
     _user_id uuid,
     _po_id uuid,
@@ -107,6 +112,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 4. Create trigger for automatic audit logging
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='audit_purchase_order_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.audit_purchase_order_access()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -167,6 +173,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 5. Create the audit trigger
+DROP TRIGGER IF EXISTS audit_purchase_order_operations ON public.purchase_orders;
 CREATE TRIGGER audit_purchase_order_operations
     AFTER INSERT OR UPDATE OR DELETE ON public.purchase_orders
     FOR EACH ROW

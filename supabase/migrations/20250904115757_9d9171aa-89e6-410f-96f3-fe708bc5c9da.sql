@@ -2,11 +2,12 @@
 -- Remove manager and employee access to highly sensitive data
 
 -- Drop policies that allow non-HR access to sensitive employee data
-DROP POLICY IF EXISTS "Employees can view their own data" ON public.employee_sensitive_data;
-DROP POLICY IF EXISTS "Managers can view their direct reports data" ON public.employee_sensitive_data;
-DROP POLICY IF EXISTS "Employees can update emergency contact only" ON public.employee_sensitive_data;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Employees can view their own data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Managers can view their direct reports data" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Employees can update emergency contact only" ON public.employee_sensitive_data; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Update the secure function to reflect HR-only access policy
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_employee_sensitive_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_employee_sensitive_data(_employee_id uuid DEFAULT NULL::uuid)
 RETURNS TABLE(
     id uuid,
@@ -84,6 +85,7 @@ $$;
 DROP FUNCTION IF EXISTS public.update_employee_emergency_contact(uuid, text, text);
 
 -- Create a secure HR-only function for updating employee data
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_employee_data_hr_only' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_employee_data_hr_only(
     _employee_id uuid,
     _employee_data jsonb
@@ -160,6 +162,7 @@ $$;
 
 -- Create a read-only function for managers to get basic employee info (non-sensitive)
 -- This allows managers to see basic info about their reports without sensitive data
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_employee_basic_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_employee_basic_info(_employee_id uuid DEFAULT NULL::uuid)
 RETURNS TABLE(
     id uuid,
@@ -220,6 +223,7 @@ END;
 $$;
 
 -- Enhanced security alert for sensitive data access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='create_sensitive_data_alert' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.create_sensitive_data_alert(_alert_details jsonb)
 RETURNS void
 LANGUAGE plpgsql
@@ -246,6 +250,7 @@ END;
 $$;
 
 -- Update the audit function to create alerts for suspicious access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_employee_data_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_employee_data_access(
     _employee_id uuid,
     _accessed_by uuid,

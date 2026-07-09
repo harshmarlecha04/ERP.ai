@@ -2,6 +2,7 @@
 -- Implement additional protection layers for critical intellectual property
 
 -- 1. Create comprehensive audit logging for ALL formula operations
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_formula_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_formula_access_enhanced(
     _user_id uuid,
     _formula_id uuid,
@@ -92,16 +93,18 @@ CREATE TABLE IF NOT EXISTS public.security_alerts (
 );
 
 -- Enable RLS on security alerts
-ALTER TABLE public.security_alerts ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.security_alerts ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Only admins can manage security alerts
-CREATE POLICY "Only admins can manage security alerts" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can manage security alerts" ON public.security_alerts; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can manage security alerts" 
 ON public.security_alerts 
 FOR ALL 
 USING (has_role(auth.uid(), 'admin'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. Create trigger to automatically log all formula table access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='audit_formula_access_trigger' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.audit_formula_access_trigger()
 RETURNS TRIGGER AS $$
 BEGIN

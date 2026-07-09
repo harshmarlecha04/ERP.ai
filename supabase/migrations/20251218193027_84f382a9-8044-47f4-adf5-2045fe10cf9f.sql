@@ -1,5 +1,5 @@
 -- Create projects table
-CREATE TABLE public.projects (
+CREATE TABLE IF NOT EXISTS public.projects (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_number text UNIQUE NOT NULL,
     name text NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE public.projects (
 );
 
 -- Create project_tasks table
-CREATE TABLE public.project_tasks (
+CREATE TABLE IF NOT EXISTS public.project_tasks (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id uuid REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
     title text NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE public.project_tasks (
 );
 
 -- Create project_comments table
-CREATE TABLE public.project_comments (
+CREATE TABLE IF NOT EXISTS public.project_comments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id uuid REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
     task_id uuid REFERENCES public.project_tasks(id) ON DELETE CASCADE,
@@ -46,7 +46,7 @@ CREATE TABLE public.project_comments (
 );
 
 -- Create project_members table
-CREATE TABLE public.project_members (
+CREATE TABLE IF NOT EXISTS public.project_members (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id uuid REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
     user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -59,6 +59,7 @@ CREATE TABLE public.project_members (
 CREATE SEQUENCE IF NOT EXISTS project_number_seq START 1;
 
 -- Function to generate project number
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='generate_project_number' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION generate_project_number()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -68,6 +69,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger for auto-generating project number
+DROP TRIGGER IF EXISTS set_project_number ON public.projects;
 CREATE TRIGGER set_project_number
     BEFORE INSERT ON public.projects
     FOR EACH ROW
@@ -75,29 +77,33 @@ CREATE TRIGGER set_project_number
     EXECUTE FUNCTION generate_project_number();
 
 -- Update timestamp trigger
+DROP TRIGGER IF EXISTS update_projects_updated_at ON public.projects;
 CREATE TRIGGER update_projects_updated_at
     BEFORE UPDATE ON public.projects
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_project_tasks_updated_at ON public.project_tasks;
 CREATE TRIGGER update_project_tasks_updated_at
     BEFORE UPDATE ON public.project_tasks
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Enable RLS
-ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE public.project_tasks ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE public.project_comments ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS Policies for projects
-CREATE POLICY "Admins and production managers can manage all projects"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins and production managers can manage all projects" ON public.projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins and production managers can manage all projects"
 ON public.projects FOR ALL
 USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager'))
-WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager'));
+WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can view projects they own or are members of"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view projects they own or are members of" ON public.projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view projects they own or are members of"
 ON public.projects FOR SELECT
 USING (
     owner_id = auth.uid() OR
@@ -106,20 +112,23 @@ USING (
         SELECT 1 FROM public.project_members pm
         WHERE pm.project_id = projects.id AND pm.user_id = auth.uid()
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can update projects they own"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can update projects they own" ON public.projects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can update projects they own"
 ON public.projects FOR UPDATE
 USING (owner_id = auth.uid())
-WITH CHECK (owner_id = auth.uid());
+WITH CHECK (owner_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policies for project_tasks
-CREATE POLICY "Admins can manage all tasks"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can manage all tasks" ON public.project_tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can manage all tasks"
 ON public.project_tasks FOR ALL
 USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager'))
-WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager'));
+WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Project members can manage tasks"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Project members can manage tasks" ON public.project_tasks; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Project members can manage tasks"
 ON public.project_tasks FOR ALL
 USING (
     EXISTS (
@@ -136,15 +145,17 @@ WITH CHECK (
         WHERE p.id = project_tasks.project_id
         AND (p.owner_id = auth.uid() OR pm.user_id = auth.uid())
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policies for project_comments
-CREATE POLICY "Admins can manage all comments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can manage all comments" ON public.project_comments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can manage all comments"
 ON public.project_comments FOR ALL
 USING (has_role(auth.uid(), 'admin'))
-WITH CHECK (has_role(auth.uid(), 'admin'));
+WITH CHECK (has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Project members can view and add comments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Project members can view and add comments" ON public.project_comments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Project members can view and add comments"
 ON public.project_comments FOR SELECT
 USING (
     EXISTS (
@@ -153,9 +164,10 @@ USING (
         WHERE p.id = project_comments.project_id
         AND (p.owner_id = auth.uid() OR pm.user_id = auth.uid())
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can add comments to their projects"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can add comments to their projects" ON public.project_comments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can add comments to their projects"
 ON public.project_comments FOR INSERT
 WITH CHECK (
     user_id = auth.uid() AND
@@ -165,19 +177,22 @@ WITH CHECK (
         WHERE p.id = project_comments.project_id
         AND (p.owner_id = auth.uid() OR pm.user_id = auth.uid())
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can delete own comments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can delete own comments" ON public.project_comments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can delete own comments"
 ON public.project_comments FOR DELETE
-USING (user_id = auth.uid());
+USING (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policies for project_members
-CREATE POLICY "Admins can manage all members"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can manage all members" ON public.project_members; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can manage all members"
 ON public.project_members FOR ALL
 USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager'))
-WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager'));
+WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'production_manager')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Project owners can manage members"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Project owners can manage members" ON public.project_members; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Project owners can manage members"
 ON public.project_members FOR ALL
 USING (
     EXISTS (
@@ -190,22 +205,23 @@ WITH CHECK (
         SELECT 1 FROM public.projects p
         WHERE p.id = project_members.project_id AND p.owner_id = auth.uid()
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Members can view project members"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Members can view project members" ON public.project_members; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Members can view project members"
 ON public.project_members FOR SELECT
 USING (
     EXISTS (
         SELECT 1 FROM public.project_members pm
         WHERE pm.project_id = project_members.project_id AND pm.user_id = auth.uid()
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create indexes for performance
-CREATE INDEX idx_projects_owner ON public.projects(owner_id);
-CREATE INDEX idx_projects_status ON public.projects(status);
-CREATE INDEX idx_project_tasks_project ON public.project_tasks(project_id);
-CREATE INDEX idx_project_tasks_assigned ON public.project_tasks(assigned_to);
-CREATE INDEX idx_project_members_project ON public.project_members(project_id);
-CREATE INDEX idx_project_members_user ON public.project_members(user_id);
-CREATE INDEX idx_project_comments_project ON public.project_comments(project_id);
+CREATE INDEX IF NOT EXISTS idx_projects_owner ON public.projects(owner_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON public.projects(status);
+CREATE INDEX IF NOT EXISTS idx_project_tasks_project ON public.project_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_tasks_assigned ON public.project_tasks(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_project_members_project ON public.project_members(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_user ON public.project_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_project_comments_project ON public.project_comments(project_id);

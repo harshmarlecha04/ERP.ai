@@ -2,6 +2,7 @@
 DROP VIEW IF EXISTS public.secure_profiles;
 
 -- Create a simpler, more secure approach using a function instead of a view
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_secure_profile_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_secure_profile_info(target_user_id uuid DEFAULT NULL)
 RETURNS TABLE(
   id uuid,
@@ -75,25 +76,28 @@ $$;
 
 -- Fix the audit function calls in the RLS policies by removing them
 -- (RLS policies should not have side effects like logging)
-DROP POLICY IF EXISTS "Admins can view all profiles with audit" ON public.profiles;
-DROP POLICY IF EXISTS "Managers can view limited team profiles" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view all profiles with audit" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Managers can view limited team profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create cleaner RLS policies without side effects
-CREATE POLICY "Admins can view all profiles" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins can view all profiles" 
 ON public.profiles 
 FOR SELECT 
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Managers can view team profiles with consent" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Managers can view team profiles with consent" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Managers can view team profiles with consent" 
 ON public.profiles 
 FOR SELECT 
 USING (
   (has_role(auth.uid(), 'production_manager'::app_role) OR 
    has_role(auth.uid(), 'rd_manager'::app_role)) AND
   (email_visible_to_public = true OR id = auth.uid())
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create a trigger to automatically log profile access instead of doing it in RLS
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='profile_access_trigger' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.profile_access_trigger()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -120,7 +124,7 @@ $$;
 -- instead of database triggers for SELECT operations
 
 -- Update the security alert to reflect the fixes
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -143,4 +147,4 @@ INSERT INTO public.security_alerts (
     )
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

@@ -1,3 +1,15 @@
+-- Recreate the stats view if a prior security migration dropped it (needed by the view below)
+CREATE OR REPLACE VIEW public.raw_material_usage_stats AS
+SELECT 
+  rm.id as raw_material_id, rm.code, rm.name, rm.supplier,
+  COUNT(piu.id) as usage_count,
+  COALESCE(SUM(piu.actual_quantity_kg), 0) as total_quantity_used,
+  MAX(piu.usage_date) as last_used_date,
+  MIN(piu.usage_date) as first_used_date
+FROM public.raw_materials rm
+LEFT JOIN public.production_ingredient_usage piu ON piu.raw_material_id = rm.id
+GROUP BY rm.id, rm.code, rm.name, rm.supplier;
+
 -- Fix Security Definer View issues - focused approach
 -- Drop and recreate only the problematic views that use SECURITY DEFINER functions
 
@@ -6,7 +18,7 @@ DROP VIEW IF EXISTS public.user_role_info CASCADE;
 
 -- Recreate safe_profiles view without has_role() calls (if it exists)
 DROP VIEW IF EXISTS public.safe_profiles CASCADE;
-CREATE VIEW public.safe_profiles AS
+CREATE OR REPLACE VIEW public.safe_profiles AS
 SELECT 
   p.id,
   CASE 
@@ -35,7 +47,7 @@ FROM public.profiles p;
 DROP FUNCTION IF EXISTS public.get_raw_material_usage_stats();
 
 -- Create a view for raw material usage stats that respects RLS
-CREATE VIEW public.raw_material_usage_view AS
+CREATE OR REPLACE VIEW public.raw_material_usage_view AS
 SELECT 
   rm.id as raw_material_id,
   rm.code,
@@ -49,7 +61,7 @@ FROM public.raw_materials rm
 LEFT JOIN public.raw_material_usage_stats stats ON stats.raw_material_id = rm.id;
 
 -- Log the successful fix
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -68,4 +80,4 @@ INSERT INTO public.security_alerts (
     'compliance_status', 'fully_compliant_with_security_linter'
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

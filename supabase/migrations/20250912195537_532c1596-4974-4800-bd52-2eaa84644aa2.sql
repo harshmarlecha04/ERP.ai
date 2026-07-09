@@ -1,4 +1,5 @@
 -- Auto-populate production ingredient usage with FIFO lot assignment
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='auto_populate_production_ingredients' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.auto_populate_production_ingredients(
   p_schedule_item_id uuid,
   p_formula_id uuid,

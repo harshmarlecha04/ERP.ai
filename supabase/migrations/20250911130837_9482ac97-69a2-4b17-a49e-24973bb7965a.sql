@@ -28,6 +28,7 @@ WHERE (
 ) AND NOT is_deleted;
 
 -- 3. Create enhanced trade secret validation (null-safe)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_secure_v2' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_secure_v2(_user_id uuid, _formula_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -83,10 +84,11 @@ END;
 $$;
 
 -- 4. Update RLS policy to use new validation
-DROP POLICY IF EXISTS "Enhanced trade secret protection" ON public.formulas;
-DROP POLICY IF EXISTS "Secure formula access for viewing" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enhanced trade secret protection" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure formula access for viewing" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Multi-tier formula security" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Multi-tier formula security" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Multi-tier formula security" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -102,9 +104,10 @@ USING (
      validate_trade_secret_access_secure_v2(auth.uid(), id)
     )
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 5. Create emergency lockdown function for trade secrets
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='enable_formula_emergency_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.enable_formula_emergency_lockdown()
 RETURNS void
 LANGUAGE plpgsql

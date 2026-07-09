@@ -1,15 +1,15 @@
 -- Add packable_bottles column to packaging_movement table
 ALTER TABLE packaging_movement 
-ADD COLUMN packable_bottles numeric;
+ADD COLUMN IF NOT EXISTS packable_bottles numeric;
 
 -- Add packable_bottles column to packaging_item table to track total
 ALTER TABLE packaging_item
-ADD COLUMN packable_bottles numeric DEFAULT 0;
+ADD COLUMN IF NOT EXISTS packable_bottles numeric DEFAULT 0;
 
 -- Create or replace view to include packable bottles in balances
 DROP VIEW IF EXISTS v_packaging_balances;
 
-CREATE VIEW v_packaging_balances AS
+CREATE OR REPLACE VIEW v_packaging_balances AS
 SELECT 
   pi.id as item_id,
   pi.category,

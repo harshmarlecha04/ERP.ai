@@ -1,6 +1,7 @@
 -- Complete the security implementation with additional functions and triggers
 
 -- Enhanced supplier access audit function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='audit_supplier_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.audit_supplier_access(supplier_id uuid, access_type text DEFAULT 'view'::text)
 RETURNS void
 LANGUAGE plpgsql
@@ -47,6 +48,7 @@ END;
 $$;
 
 -- Add trigger to automatically audit direct table access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_supplier_table_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_supplier_table_access()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -79,11 +81,13 @@ $$;
 
 -- Apply the audit trigger
 DROP TRIGGER IF EXISTS supplier_table_access_audit ON public.suppliers;
+DROP TRIGGER IF EXISTS supplier_table_access_audit ON public.suppliers;
 CREATE TRIGGER supplier_table_access_audit
     AFTER INSERT OR UPDATE OR DELETE ON public.suppliers
     FOR EACH ROW EXECUTE FUNCTION public.log_supplier_table_access();
 
 -- Create function to mask sensitive contact info for unauthorized users
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_suppliers_masked_for_role' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_suppliers_masked_for_role(_user_id uuid)
 RETURNS TABLE(
     id uuid,
@@ -162,6 +166,7 @@ CREATE INDEX IF NOT EXISTS idx_supplier_access_audit_risk_level
 ON public.supplier_access_audit (risk_level, accessed_at DESC);
 
 -- Create security alert function for suspicious activity
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='check_supplier_security_alerts' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.check_supplier_security_alerts()
 RETURNS TABLE(
     alert_type text,

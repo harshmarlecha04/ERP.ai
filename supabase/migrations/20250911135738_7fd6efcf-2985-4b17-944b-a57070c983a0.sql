@@ -2,6 +2,7 @@
 -- This migration implements comprehensive trade secret protection measures
 
 -- 1. Create enhanced audit logging for formula access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_formula_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_formula_access_enhanced(
     _user_id uuid, 
     _formula_id uuid, 
@@ -79,15 +80,17 @@ CREATE TABLE IF NOT EXISTS public.trade_secret_sessions (
 );
 
 -- Enable RLS on trade secret sessions
-ALTER TABLE public.trade_secret_sessions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.trade_secret_sessions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Only admins and session owners can access their sessions
-CREATE POLICY "Users can manage their own trade secret sessions"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can manage their own trade secret sessions" ON public.trade_secret_sessions; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can manage their own trade secret sessions"
 ON public.trade_secret_sessions
 FOR ALL
-USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin'::app_role));
+USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. Enhanced trade secret validation with session control
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_trade_secret_access_enhanced' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_trade_secret_access_enhanced(
     _user_id uuid, 
     _formula_id uuid
@@ -186,6 +189,7 @@ END;
 $$;
 
 -- 4. Create secure formula access function with enhanced protection
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_secure_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_secure_accessible_formulas(_user_id uuid)
 RETURNS TABLE(
     id uuid,
@@ -297,6 +301,7 @@ END;
 $$;
 
 -- 5. Update the existing get_accessible_formulas to use the secure version
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_accessible_formulas' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_accessible_formulas(_user_id uuid)
 RETURNS TABLE(
     id uuid,
@@ -337,8 +342,9 @@ END;
 $$;
 
 -- 6. Enhanced RLS policy for formulas with additional security layers
-DROP POLICY IF EXISTS "Enhanced formula security with trade secret protection" ON public.formulas;
-CREATE POLICY "Maximum security formula access control"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enhanced formula security with trade secret protection" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Maximum security formula access control" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Maximum security formula access control"
 ON public.formulas
 FOR SELECT
 USING (
@@ -360,9 +366,10 @@ USING (
         (security_level = 'trade_secret' AND 
          validate_trade_secret_access_enhanced(auth.uid(), id))
     )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 7. Create function to terminate all trade secret sessions (emergency use)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_terminate_trade_secret_sessions' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_terminate_trade_secret_sessions()
 RETURNS void
 LANGUAGE plpgsql
@@ -397,6 +404,7 @@ END;
 $$;
 
 -- 8. Add automatic session cleanup trigger
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='cleanup_expired_trade_secret_sessions' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.cleanup_expired_trade_secret_sessions()
 RETURNS void
 LANGUAGE plpgsql
@@ -427,10 +435,10 @@ COMMENT ON FUNCTION public.validate_trade_secret_access_enhanced(uuid, uuid) IS 
 COMMENT ON TABLE public.trade_secret_sessions IS 'SECURITY-CRITICAL: Session management for trade secret access with automatic expiration and audit trail.';
 
 -- Final security alert about the enhanced protection
-INSERT INTO public.security_alerts (alert_type, severity, details)
+DO $aud$ BEGIN INSERT INTO public.security_alerts (alert_type, severity, details)
 VALUES (
     'security_enhancement_deployed',
-    'info',
+    'low',
     jsonb_build_object(
         'deployment_time', now(),
         'enhancement', 'Enhanced trade secret protection against industrial espionage',
@@ -443,4 +451,4 @@ VALUES (
             'Emergency session termination'
         )
     )
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

@@ -24,13 +24,37 @@ CREATE TABLE IF NOT EXISTS public.formula_access_requests (
 );
 
 -- Enable RLS on the new table
-ALTER TABLE public.formula_access_requests ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.formula_access_requests ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+
+-- Ensure audit table exists (was created outside the migration chain originally)
+CREATE TABLE IF NOT EXISTS public.formula_access_audit (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid,
+  formula_id uuid,
+  access_type text,
+  details jsonb DEFAULT '{}'::jsonb,
+  accessed_at timestamptz DEFAULT now(),
+  ip_address text,
+  session_id text,
+  created_at timestamptz DEFAULT now()
+);
+DO $rls$ BEGIN ALTER TABLE public.formula_access_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
+
+-- Stub for function defined fully in a later migration (needed by policies below)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_formula_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
+CREATE OR REPLACE FUNCTION public.log_formula_access(_user_id uuid, _formula_id uuid, _access_type text, _details jsonb DEFAULT '{}'::jsonb)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $stub$ BEGIN
+DO $aud$ BEGIN INSERT INTO public.formula_access_audit (user_id, formula_id, access_type, details, accessed_at)
+  VALUES (_user_id, _formula_id, _access_type, _details, now()); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
+END $stub$;
 
 -- 3. Enhanced audit logging with IP address and session tracking
 ALTER TABLE public.formula_access_audit 
 ADD COLUMN IF NOT EXISTS risk_level text DEFAULT 'low' CHECK (risk_level IN ('low', 'medium', 'high', 'critical'));
 
 -- 4. Create enhanced formula access function with stricter controls
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='can_access_trade_secret_formula' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.can_access_trade_secret_formula(_user_id uuid, _formula_id uuid, _access_type text DEFAULT 'read'::text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -71,9 +95,10 @@ END;
 $$;
 
 -- 5. Update the main formula access policy to use enhanced function
-DROP POLICY IF EXISTS "Strict formula access with audit logging" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Strict formula access with audit logging" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Enhanced trade secret formula protection" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enhanced trade secret formula protection" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Enhanced trade secret formula protection" 
 ON public.formulas 
 FOR SELECT 
 USING (
@@ -87,26 +112,30 @@ USING (
                 ELSE 'medium'
             END
         )) IS NULL)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 6. RLS policies for access requests
-CREATE POLICY "Users can view their own access requests" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own access requests" ON public.formula_access_requests; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own access requests" 
 ON public.formula_access_requests 
 FOR SELECT 
-USING (user_id = auth.uid());
+USING (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Users can create access requests" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can create access requests" ON public.formula_access_requests; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can create access requests" 
 ON public.formula_access_requests 
 FOR INSERT 
-WITH CHECK (user_id = auth.uid());
+WITH CHECK (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Admins and R&D managers can manage access requests" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins and R&D managers can manage access requests" ON public.formula_access_requests; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins and R&D managers can manage access requests" 
 ON public.formula_access_requests 
 FOR ALL 
 USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'rd_manager'))
-WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'rd_manager'));
+WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'rd_manager')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 7. Function to request formula access with approval workflow
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='request_formula_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.request_formula_access(_formula_id uuid, _access_type text, _justification text)
 RETURNS jsonb
 LANGUAGE plpgsql

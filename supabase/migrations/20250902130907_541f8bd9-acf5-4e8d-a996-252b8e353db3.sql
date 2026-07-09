@@ -2,6 +2,7 @@
 -- Add triggers and additional security controls for formulas table
 
 -- 4. Add field-level encryption recommendations and security controls
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_security_level' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_formula_security_level()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -42,6 +43,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 5. Create IP-based access restrictions for trade secrets
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='check_formula_ip_restrictions' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.check_formula_ip_restrictions()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -99,17 +101,17 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 6. Create the actual triggers
+DROP TRIGGER IF EXISTS formula_security_validation_trigger ON public.formulas;
 CREATE TRIGGER formula_security_validation_trigger
     BEFORE INSERT OR UPDATE ON public.formulas
     FOR EACH ROW
     EXECUTE FUNCTION public.validate_formula_security_level();
 
-CREATE TRIGGER formula_ip_restriction_trigger
-    BEFORE SELECT ON public.formulas
-    FOR EACH ROW
-    EXECUTE FUNCTION public.check_formula_ip_restrictions();
+DROP TRIGGER IF EXISTS formula_ip_restriction_trigger ON public.formulas;
+-- (removed: Postgres does not support SELECT triggers)
 
 -- 7. Create emergency lockdown function for formula access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='emergency_formula_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.emergency_formula_lockdown(
     _reason text DEFAULT 'Emergency lockdown activated'
 )

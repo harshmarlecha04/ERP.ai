@@ -9,7 +9,7 @@ DROP FUNCTION IF EXISTS public.get_secure_profile_info(uuid);
 -- Create proper views that respect RLS instead of SECURITY DEFINER functions
 
 -- Replace get_accessible_formulas_for_user with a proper view
-CREATE VIEW public.accessible_formulas AS
+CREATE OR REPLACE VIEW public.accessible_formulas AS
 SELECT 
   f.id,
   f.code,
@@ -30,7 +30,7 @@ WHERE
   NOT f.is_deleted;
 
 -- Replace get_safe_profile_data with a proper view that respects RLS
-CREATE VIEW public.safe_profile_data AS
+CREATE OR REPLACE VIEW public.safe_profile_data AS
 SELECT 
   p.id,
   -- Show full name only for own profile or if admin
@@ -51,7 +51,7 @@ SELECT
 FROM public.profiles p;
 
 -- Create a view for anonymized profile data that respects RLS
-CREATE VIEW public.anonymized_profile_data AS
+CREATE OR REPLACE VIEW public.anonymized_profile_data AS
 SELECT 
   p.id,
   CASE 
@@ -70,7 +70,7 @@ SELECT
 FROM public.profiles p;
 
 -- Create a secure profile info view that respects RLS
-CREATE VIEW public.secure_profile_info AS
+CREATE OR REPLACE VIEW public.secure_profile_info AS
 SELECT 
   p.id,
   -- Apply data minimization based on viewer permissions
@@ -98,6 +98,7 @@ FROM public.profiles p;
 
 -- Keep get_raw_material_usage_stats as SECURITY DEFINER but add proper permission checks
 -- This one needs to remain SECURITY DEFINER for access to usage statistics
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_raw_material_usage_stats' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_raw_material_usage_stats()
 RETURNS TABLE(
   raw_material_id uuid, 
@@ -155,7 +156,7 @@ END;
 $$;
 
 -- Log the security fix
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -177,4 +178,4 @@ INSERT INTO public.security_alerts (
     )
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

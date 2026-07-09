@@ -1,5 +1,5 @@
 -- Create case-insensitive unique index for faster duplicate checks
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_raw_materials_code_unique_ci 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_raw_materials_code_unique_ci 
 ON public.raw_materials (UPPER(code));
 
 -- Add idempotency key column for create operations
@@ -7,17 +7,18 @@ ALTER TABLE public.raw_materials
 ADD COLUMN IF NOT EXISTS idempotency_key UUID DEFAULT NULL;
 
 -- Create index on idempotency key for fast lookups
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_raw_materials_idempotency_key 
+CREATE INDEX IF NOT EXISTS idx_raw_materials_idempotency_key 
 ON public.raw_materials (idempotency_key) WHERE idempotency_key IS NOT NULL;
 
 -- Add optimized indexes for performance
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_raw_materials_updated_at 
+CREATE INDEX IF NOT EXISTS idx_raw_materials_updated_at 
 ON public.raw_materials (updated_at DESC);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_raw_material_lots_material_id 
+CREATE INDEX IF NOT EXISTS idx_raw_material_lots_material_id 
 ON public.raw_material_lots (raw_material_id);
 
 -- Create optimized RPC function with idempotency support
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='create_raw_material_with_lots_v2' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.create_raw_material_with_lots_v2(
   p_code text,
   p_name text,

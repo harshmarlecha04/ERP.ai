@@ -1,13 +1,14 @@
 -- Drop the existing policy and recreate it
-DROP POLICY IF EXISTS "Authenticated users can view activity audit" ON public.user_activity_audit;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view activity audit" ON public.user_activity_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can view activity audit"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view activity audit" ON public.user_activity_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view activity audit"
 ON public.user_activity_audit
 FOR SELECT
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Insert some sample activity data to demonstrate the system
-INSERT INTO public.user_activity_audit (
+DO $aud$ BEGIN INSERT INTO public.user_activity_audit (
     user_id, activity_type, table_name, operation, record_id,
     new_values, ip_address, details, risk_level
 ) VALUES 
@@ -65,4 +66,4 @@ INSERT INTO public.user_activity_audit (
     '192.168.1.100',
     '{"timestamp": "2025-01-11T14:20:00Z", "trigger": "sample_data"}'::jsonb,
     'low'
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

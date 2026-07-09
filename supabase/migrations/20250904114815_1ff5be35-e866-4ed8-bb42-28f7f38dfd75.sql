@@ -7,6 +7,7 @@ DROP VIEW IF EXISTS public.purchase_orders_operational;
 -- or use a SECURITY DEFINER function if needed
 
 -- Create a secure function to get purchase orders with proper financial data filtering
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_purchase_orders_with_financial_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_purchase_orders_with_financial_access()
 RETURNS TABLE(
     id uuid,

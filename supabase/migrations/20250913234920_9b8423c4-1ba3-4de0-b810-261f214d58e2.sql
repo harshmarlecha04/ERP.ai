@@ -1,7 +1,7 @@
 -- Add missing columns to profiles table that handle_new_user function expects
 ALTER TABLE public.profiles 
-ADD COLUMN email text,
-ADD COLUMN full_name text;
+ADD COLUMN IF NOT EXISTS email text,
+ADD COLUMN IF NOT EXISTS full_name text;
 
 -- Update the existing profiles if any to sync with auth.users
 UPDATE public.profiles 

@@ -1,15 +1,16 @@
 -- Fix critical security vulnerability: Restrict supplier contact information access
 -- Drop ALL existing policies on suppliers table
-DROP POLICY IF EXISTS "Authenticated users can manage suppliers" ON public.suppliers;
-DROP POLICY IF EXISTS "Secure supplier access for viewing" ON public.suppliers;
-DROP POLICY IF EXISTS "Secure supplier creation" ON public.suppliers;
-DROP POLICY IF EXISTS "Secure supplier updates" ON public.suppliers;
-DROP POLICY IF EXISTS "Secure supplier deletion" ON public.suppliers;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage suppliers" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier access for viewing" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier creation" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier updates" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier deletion" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create secure RLS policies for suppliers based on roles and business need
 
 -- Policy for SELECT: Only allow access to users with procurement/management roles
-CREATE POLICY "Secure supplier access for viewing" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier access for viewing" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure supplier access for viewing" 
 ON public.suppliers 
 FOR SELECT
 TO authenticated
@@ -18,20 +19,22 @@ USING (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role) OR
   has_role(auth.uid(), 'hr_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Policy for INSERT: Only admins and production managers can create suppliers
-CREATE POLICY "Secure supplier creation" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier creation" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure supplier creation" 
 ON public.suppliers 
 FOR INSERT
 TO authenticated
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Policy for UPDATE: Only admins and production managers can update supplier information
-CREATE POLICY "Secure supplier updates" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier updates" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure supplier updates" 
 ON public.suppliers 
 FOR UPDATE
 TO authenticated
@@ -42,18 +45,20 @@ USING (
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Policy for DELETE: Only admins can delete suppliers
-CREATE POLICY "Secure supplier deletion" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Secure supplier deletion" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Secure supplier deletion" 
 ON public.suppliers 
 FOR DELETE
 TO authenticated
 USING (
   has_role(auth.uid(), 'admin'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create audit logging function for supplier access
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_supplier_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_supplier_access(_user_id uuid, _supplier_id uuid, _access_type text, _details jsonb DEFAULT '{}'::jsonb)
 RETURNS void
 LANGUAGE plpgsql

@@ -13,18 +13,21 @@ CREATE TABLE IF NOT EXISTS public.material_reservations_history (
 );
 
 -- Enable RLS
-ALTER TABLE public.material_reservations_history ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.material_reservations_history ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS Policies
-CREATE POLICY "Authenticated users can view reservation history"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view reservation history" ON public.material_reservations_history; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view reservation history"
   ON public.material_reservations_history FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can insert reservation history"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can insert reservation history" ON public.material_reservations_history; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can insert reservation history"
   ON public.material_reservations_history FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 2. Update schedule_production_for_order to make material reservation optional
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='schedule_production_for_order' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.schedule_production_for_order(
   p_order_id uuid,
   p_start_date date,
@@ -174,6 +177,7 @@ END;
 $$;
 
 -- 3. Update auto status trigger to include materials_reserved
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='auto_update_order_status' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.auto_update_order_status()
 RETURNS trigger
 LANGUAGE plpgsql

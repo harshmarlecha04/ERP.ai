@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.formulas (
 );
 
 -- Enable Row Level Security
-ALTER TABLE public.formulas ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.formulas ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Open policies (match current project approach)
 DO $$ BEGIN
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.formula_ingredients (
 );
 
 -- Enable Row Level Security
-ALTER TABLE public.formula_ingredients ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.formula_ingredients ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Open policies
 DO $$ BEGIN

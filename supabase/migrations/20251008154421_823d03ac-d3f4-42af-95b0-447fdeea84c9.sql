@@ -5,7 +5,7 @@
 -- could view other users' sensitive profile information (emails, names, job titles, etc.)
 
 -- Step 1: Drop the overly permissive policy that allows all authenticated users to view profiles
-DROP POLICY IF EXISTS "Authenticated users can view basic public profile info" ON public.profiles;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view basic public profile info" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Step 2: Drop existing functions so we can recreate them with proper signatures
 DROP FUNCTION IF EXISTS public.get_user_display_info(uuid[]);
@@ -15,6 +15,7 @@ DROP FUNCTION IF EXISTS public.get_team_member_info(uuid);
 
 -- Function to get basic display info for specific users (for dropdowns, assignments, etc.)
 -- Returns only non-sensitive display information
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_user_display_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_user_display_info(_user_ids uuid[])
 RETURNS TABLE(
   user_id uuid,
@@ -43,6 +44,7 @@ $$;
 
 -- Function to get team members for a manager
 -- Returns basic info about direct reports
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_team_member_info' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_team_member_info(_manager_id uuid)
 RETURNS TABLE(
   user_id uuid,
@@ -75,8 +77,9 @@ END;
 $$;
 
 -- Step 4: Add new restrictive policy - only allow viewing of own profile
-CREATE POLICY "Users can only view their own profile data"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can only view their own profile data" ON public.profiles; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can only view their own profile data"
 ON public.profiles
 FOR SELECT
 TO authenticated
-USING (id = auth.uid());
+USING (id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

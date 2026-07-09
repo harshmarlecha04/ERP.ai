@@ -1,5 +1,6 @@
 
 -- Fix convert_rd_to_production search_path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='convert_rd_to_production' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.convert_rd_to_production(p_rd_project_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -48,6 +49,7 @@ END;
 $function$;
 
 -- Fix fn_create_schedule_item (3-arg overload) search_path
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='fn_create_schedule_item' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.fn_create_schedule_item(p_schedule_date date, p_formula_id uuid, p_batches integer)
  RETURNS jsonb
  LANGUAGE plpgsql

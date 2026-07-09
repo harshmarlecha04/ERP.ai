@@ -1,1 +1,1 @@
-ALTER TABLE order_line_items ADD COLUMN batches_required integer DEFAULT NULL;
+ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS batches_required integer DEFAULT NULL;

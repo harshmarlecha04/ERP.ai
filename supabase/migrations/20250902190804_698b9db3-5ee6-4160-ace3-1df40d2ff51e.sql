@@ -27,7 +27,7 @@ WHERE NOT f.is_deleted;
 
 -- Recreate safe_profiles view without has_role() calls
 -- This will show data based purely on user's own profile and consent settings
-CREATE VIEW public.safe_profiles AS
+CREATE OR REPLACE VIEW public.safe_profiles AS
 SELECT 
   p.id,
   -- Show full name based on user's own profile or consent
@@ -55,7 +55,7 @@ SELECT
 FROM public.profiles p;
 
 -- Recreate secure_profile_info without has_role() calls
-CREATE VIEW public.secure_profile_info AS
+CREATE OR REPLACE VIEW public.secure_profile_info AS
 SELECT 
   p.id,
   CASE 
@@ -80,7 +80,7 @@ FROM public.profiles p;
 
 -- Convert the remaining SECURITY DEFINER function to SECURITY INVOKER where possible
 -- Create a role-checking view that doesn't use SECURITY DEFINER functions
-CREATE VIEW public.user_role_info AS
+CREATE OR REPLACE VIEW public.user_role_info AS
 SELECT 
   ur.user_id,
   ur.role,
@@ -92,7 +92,7 @@ WHERE ur.user_id = auth.uid(); -- Only show current user's roles
 -- This approach relies on the existing RLS policies rather than bypassing them
 
 -- Log the fix
-INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
   alert_type,
   severity,
   details,
@@ -111,4 +111,4 @@ INSERT INTO public.security_alerts (
     'approach', 'rely_on_native_RLS_policies_instead_of_security_definer_functions'
   ),
   now()
-);
+); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;

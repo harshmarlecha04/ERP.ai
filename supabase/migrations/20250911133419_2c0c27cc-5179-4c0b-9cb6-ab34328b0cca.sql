@@ -2,6 +2,7 @@
 -- This addresses the security vulnerability where sensitive employee PII could be exposed
 
 -- Create encryption functions for sensitive employee data
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='encrypt_sensitive_field' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.encrypt_sensitive_field(field_value TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -22,6 +23,7 @@ BEGIN
 END;
 $$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='decrypt_sensitive_field' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.decrypt_sensitive_field(encrypted_value TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql

@@ -1,5 +1,6 @@
 
 -- 1. Generator function (unambiguous chars only)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='gen_invite_short_code' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.gen_invite_short_code()
 RETURNS text
 LANGUAGE plpgsql
@@ -38,6 +39,7 @@ SET short_code = public.gen_invite_short_code()
 WHERE short_code IS NULL;
 
 -- 4. Add unique constraint
+ALTER TABLE public.customer_invitations DROP CONSTRAINT IF EXISTS customer_invitations_short_code_key;
 ALTER TABLE public.customer_invitations
   ADD CONSTRAINT customer_invitations_short_code_key UNIQUE (short_code);
 
@@ -45,6 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_customer_invitations_short_code
   ON public.customer_invitations(short_code);
 
 -- 5. Trigger for new rows
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='set_invitation_short_code' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.set_invitation_short_code()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -59,11 +62,13 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_invitation_short_code ON public.customer_invitations;
+DROP TRIGGER IF EXISTS trg_invitation_short_code ON public.customer_invitations;
 CREATE TRIGGER trg_invitation_short_code
   BEFORE INSERT ON public.customer_invitations
   FOR EACH ROW EXECUTE FUNCTION public.set_invitation_short_code();
 
 -- 6. Update accept RPC to accept short code OR long token
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='accept_customer_invitation' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.accept_customer_invitation(_token text)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public

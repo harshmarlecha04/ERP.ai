@@ -2,6 +2,7 @@
 ALTER TABLE public.formula_access_audit 
 DROP CONSTRAINT IF EXISTS formula_access_audit_access_type_check;
 
+ALTER TABLE public.formula_access_audit DROP CONSTRAINT IF EXISTS formula_access_audit_access_type_check;
 ALTER TABLE public.formula_access_audit 
 ADD CONSTRAINT formula_access_audit_access_type_check 
 CHECK (access_type = ANY (ARRAY[

@@ -1,6 +1,7 @@
 -- Comprehensive fix for all ambiguous column references in get_material_requirements_by_date_range
 -- This resolves conflicts between RETURNS TABLE variables and CTE column aliases
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_material_requirements_by_date_range' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_material_requirements_by_date_range(
   p_start_date date,
   p_end_date date

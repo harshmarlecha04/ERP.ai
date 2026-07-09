@@ -1,4 +1,5 @@
 -- Security Fix 1: Add server-side business hours validation function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='is_business_hours' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.is_business_hours()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -27,6 +28,7 @@ END;
 $$;
 
 -- Security Fix 2: Email domain validation trigger
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_email_domain' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_email_domain()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -45,23 +47,25 @@ $$;
 
 -- Apply email validation trigger to auth.users
 DROP TRIGGER IF EXISTS enforce_email_domain ON auth.users;
+DROP TRIGGER IF EXISTS enforce_email_domain ON auth.users;
 CREATE TRIGGER enforce_email_domain
     BEFORE INSERT ON auth.users
     FOR EACH ROW
     EXECUTE FUNCTION public.validate_email_domain();
 
 -- Security Fix 3: Add INSERT policy for user_activity_audit
-DROP POLICY IF EXISTS "Authenticated users can log activity" ON public.user_activity_audit;
-CREATE POLICY "Authenticated users can log activity"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can log activity" ON public.user_activity_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can log activity" ON public.user_activity_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can log activity"
 ON public.user_activity_audit
 FOR INSERT
 TO authenticated
-WITH CHECK (user_id = auth.uid());
+WITH CHECK (user_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Security Fix 4: Fix security definer views by converting to SECURITY INVOKER
 -- Drop and recreate v_packaging_history as SECURITY INVOKER
 DROP VIEW IF EXISTS public.v_packaging_history;
-CREATE VIEW public.v_packaging_history 
+CREATE OR REPLACE VIEW public.v_packaging_history 
 WITH (security_invoker = true)
 AS
 SELECT 
@@ -82,7 +86,7 @@ LEFT JOIN public.packaging_item pi ON pm.item_id = pi.id;
 
 -- Drop and recreate v_packaging_balances as SECURITY INVOKER
 DROP VIEW IF EXISTS public.v_packaging_balances;
-CREATE VIEW public.v_packaging_balances 
+CREATE OR REPLACE VIEW public.v_packaging_balances 
 WITH (security_invoker = true)
 AS
 SELECT 
@@ -116,16 +120,18 @@ ALTER VIEW public.v_packaging_history SET (security_invoker = true);
 ALTER VIEW public.v_packaging_balances SET (security_invoker = true);
 
 -- Ensure authenticated users can view packaging data
-DROP POLICY IF EXISTS "Authenticated users can view packaging history" ON public.packaging_movement;
-CREATE POLICY "Authenticated users can view packaging history"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view packaging history" ON public.packaging_movement; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view packaging history" ON public.packaging_movement; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view packaging history"
 ON public.packaging_movement
 FOR SELECT
 TO authenticated
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "Authenticated users can view packaging items" ON public.packaging_item;
-CREATE POLICY "Authenticated users can view packaging items"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view packaging items" ON public.packaging_item; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view packaging items" ON public.packaging_item; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view packaging items"
 ON public.packaging_item
 FOR SELECT
 TO authenticated
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

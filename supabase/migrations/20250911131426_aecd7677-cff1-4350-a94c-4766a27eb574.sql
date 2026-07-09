@@ -18,6 +18,7 @@ AND NOT is_deleted
 AND security_level != 'trade_secret';
 
 -- Add the emergency lockdown capability  
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='enable_formula_emergency_lockdown' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.enable_formula_emergency_lockdown()
 RETURNS void
 LANGUAGE plpgsql

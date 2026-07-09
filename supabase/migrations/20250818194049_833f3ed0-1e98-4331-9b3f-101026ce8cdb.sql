@@ -48,13 +48,14 @@ CREATE TABLE IF NOT EXISTS public.security_config (
 );
 
 -- Enable RLS and create admin-only policies
-ALTER TABLE public.security_config ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.security_config ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.security_config;
-DROP POLICY IF EXISTS "Enable full access for authenticated users" ON public.security_config;
-DROP POLICY IF EXISTS "Only admins can access security config" ON public.security_config;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enable read access for all users" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Enable full access for authenticated users" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can access security config" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Only admins can manage security config" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can manage security config" ON public.security_config; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can manage security config" 
 ON public.security_config 
 FOR ALL
 USING (EXISTS (
@@ -64,30 +65,15 @@ USING (EXISTS (
 WITH CHECK (EXISTS (
   SELECT 1 FROM public.user_roles 
   WHERE user_id = auth.uid() AND role = 'admin'
-));
+)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- 3. Fix function search path issues for all functions that don't have it set
 -- List of functions that need search_path fixed:
-CREATE OR REPLACE FUNCTION public.citext(boolean)
-RETURNS citext
-LANGUAGE internal
-IMMUTABLE PARALLEL SAFE STRICT
-SET search_path TO 'public'
-AS $function$booltext$function$;
+-- (removed: citext extension internals; superuser-only and provided by CREATE EXTENSION citext)
 
-CREATE OR REPLACE FUNCTION public.citextin(cstring)
-RETURNS citext
-LANGUAGE internal
-IMMUTABLE PARALLEL SAFE STRICT
-SET search_path TO 'public'
-AS $function$textin$function$;
+-- (removed: citext extension internals; superuser-only and provided by CREATE EXTENSION citext)
 
-CREATE OR REPLACE FUNCTION public.citextout(citext)
-RETURNS cstring
-LANGUAGE internal
-IMMUTABLE PARALLEL SAFE STRICT
-SET search_path TO 'public'
-AS $function$textout$function$;
+-- (removed: citext extension internals; superuser-only and provided by CREATE EXTENSION citext)
 
 -- 4. Ensure emergency lockdown config exists with proper security
 INSERT INTO public.security_config (config_key, config_value, description)

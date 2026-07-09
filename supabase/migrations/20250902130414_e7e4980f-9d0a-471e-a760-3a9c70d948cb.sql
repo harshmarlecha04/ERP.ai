@@ -7,6 +7,7 @@ COMMENT ON VIEW public.raw_material_usage_stats IS
 
 -- Create a security function to validate access to usage stats
 -- This provides an additional layer of protection
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_usage_stats_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.validate_usage_stats_access()
 RETURNS boolean
 LANGUAGE plpgsql

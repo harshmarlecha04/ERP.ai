@@ -3,35 +3,38 @@
 -- ========================================
 
 -- Drop existing policies if they exist
-DROP POLICY IF EXISTS "business_hours_supplier_view" ON public.suppliers;
-DROP POLICY IF EXISTS "restricted_supplier_access" ON public.suppliers;
-DROP POLICY IF EXISTS "restricted_supplier_creation" ON public.suppliers;
-DROP POLICY IF EXISTS "restricted_supplier_updates" ON public.suppliers;
-DROP POLICY IF EXISTS "restricted_supplier_deletion" ON public.suppliers;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "business_hours_supplier_view" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_access" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_creation" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_updates" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_deletion" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create new restrictive policy for viewing suppliers
 -- Only admin and production_manager roles can access supplier data
-CREATE POLICY "restricted_supplier_access"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_access" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "restricted_supplier_access"
 ON public.suppliers
 FOR SELECT
 TO authenticated
 USING (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create policy for creating suppliers
-CREATE POLICY "restricted_supplier_creation"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_creation" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "restricted_supplier_creation"
 ON public.suppliers
 FOR INSERT
 TO authenticated
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create policy for updating suppliers
-CREATE POLICY "restricted_supplier_updates"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_updates" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "restricted_supplier_updates"
 ON public.suppliers
 FOR UPDATE
 TO authenticated
@@ -42,20 +45,22 @@ USING (
 WITH CHECK (
   has_role(auth.uid(), 'admin'::app_role) OR 
   has_role(auth.uid(), 'production_manager'::app_role)
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create policy for deleting suppliers (admin only)
-CREATE POLICY "restricted_supplier_deletion"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "restricted_supplier_deletion" ON public.suppliers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "restricted_supplier_deletion"
 ON public.suppliers
 FOR DELETE
 TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- ========================================
 -- SECURITY FIX: Add Search Path to Functions
 -- ========================================
 
 -- Fix is_business_hours function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='is_business_hours' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.is_business_hours()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -76,6 +81,7 @@ END;
 $$;
 
 -- Fix has_role function
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='has_role' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
 RETURNS boolean
 LANGUAGE sql
@@ -91,7 +97,8 @@ AS $$
 $$;
 
 -- Fix validate_formula_access_secure function
-CREATE OR REPLACE FUNCTION public.validate_formula_access_secure(_user_id uuid, _formula_id uuid, _access_type text)
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='validate_formula_access_secure' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
+CREATE OR REPLACE FUNCTION public.validate_formula_access_secure(_user_id uuid, _formula_id uuid, _access_type text DEFAULT 'view')
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE
@@ -157,20 +164,21 @@ CREATE TABLE IF NOT EXISTS public.supplier_access_audit (
     risk_level text DEFAULT 'medium',
     accessed_at timestamp with time zone DEFAULT now()
 );
+DO $rls$ BEGIN ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-ALTER TABLE public.supplier_access_audit ENABLE ROW LEVEL SECURITY;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "only_admins_view_supplier_audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "authenticated_insert_supplier_audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-DROP POLICY IF EXISTS "only_admins_view_supplier_audit" ON public.supplier_access_audit;
-DROP POLICY IF EXISTS "authenticated_insert_supplier_audit" ON public.supplier_access_audit;
-
-CREATE POLICY "only_admins_view_supplier_audit"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "only_admins_view_supplier_audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "only_admins_view_supplier_audit"
 ON public.supplier_access_audit
 FOR SELECT
 TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "authenticated_insert_supplier_audit"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "authenticated_insert_supplier_audit" ON public.supplier_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "authenticated_insert_supplier_audit"
 ON public.supplier_access_audit
 FOR INSERT
 TO authenticated
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

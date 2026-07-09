@@ -1,5 +1,5 @@
 -- First, let's insert some sample activity data to demonstrate the system
-INSERT INTO public.user_activity_audit (
+DO $seed$ BEGIN INSERT INTO public.user_activity_audit (
     user_id, activity_type, table_name, operation, record_id,
     new_values, ip_address, details, risk_level
 ) VALUES 
@@ -57,17 +57,19 @@ INSERT INTO public.user_activity_audit (
     '192.168.1.100',
     '{"timestamp": "2025-01-11T14:20:00Z", "trigger": "sample_data"}'::jsonb,
     'low'
-);
+); EXCEPTION WHEN foreign_key_violation OR unique_violation THEN NULL; END $seed$;
 
 -- Update the RLS policy to be more permissive for testing (allow any authenticated user to view)
-DROP POLICY IF EXISTS "Only mfg@pharmvista.com can view activity audit" ON public.user_activity_audit;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only mfg@pharmvista.com can view activity audit" ON public.user_activity_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Authenticated users can view activity audit"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can view activity audit" ON public.user_activity_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can view activity audit"
 ON public.user_activity_audit
 FOR SELECT
-USING (auth.uid() IS NOT NULL);
+USING (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Also update the function to be less restrictive for testing
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_all_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_all_user_activity()
 RETURNS TABLE(
     id UUID,

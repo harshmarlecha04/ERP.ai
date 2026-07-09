@@ -2,6 +2,7 @@
 -- Fix mutable search_path on custom functions
 
 -- 1. update_updated_at_column
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_updated_at_column' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -11,6 +12,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- 2. update_milestone_updated_at
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_milestone_updated_at' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_milestone_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -20,6 +22,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- 3. update_office_supply_purchases_updated_at
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_office_supply_purchases_updated_at' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_office_supply_purchases_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -29,6 +32,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- 4. update_order_fulfillment
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='update_order_fulfillment' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.update_order_fulfillment()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -44,6 +48,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- 5. log_user_activity
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_user_activity' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_user_activity()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -52,6 +57,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- 6. trigger_cleanup_expired_sessions
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='trigger_cleanup_expired_sessions' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.trigger_cleanup_expired_sessions()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -63,6 +69,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- 7. generate_project_number
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='generate_project_number' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.generate_project_number()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -81,12 +88,13 @@ $$ LANGUAGE plpgsql SET search_path = public;
 -- We'll handle these two separately if they have parameters
 
 -- Fix overly permissive RLS policy on rd_project_actives
-DROP POLICY IF EXISTS "All users can insert rd_project_actives" ON public.rd_project_actives;
-CREATE POLICY "Authenticated users can insert rd_project_actives"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "All users can insert rd_project_actives" ON public.rd_project_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can insert rd_project_actives" ON public.rd_project_actives; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can insert rd_project_actives"
 ON public.rd_project_actives
 FOR INSERT
 TO authenticated
-WITH CHECK (true);
+WITH CHECK (true); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Note: customer_inquiries, inquiry_messages, inquiry_order_details INSERT policies
 -- are intentionally open for the public inquiry submission form (unauthenticated users).

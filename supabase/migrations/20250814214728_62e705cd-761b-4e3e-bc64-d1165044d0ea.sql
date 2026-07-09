@@ -5,6 +5,7 @@ DROP VIEW IF EXISTS public.secure_profiles;
 -- Check if profiles table already has adequate RLS policies (it should based on our previous work)
 
 -- Add a function that returns sanitized profile data for public viewing
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_sanitized_profile_data' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_sanitized_profile_data(_profile_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql

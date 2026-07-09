@@ -1,9 +1,10 @@
-DROP POLICY IF EXISTS "Staff can view roster" ON public.schedule_employees;
-DROP POLICY IF EXISTS "Staff can insert roster" ON public.schedule_employees;
-DROP POLICY IF EXISTS "Staff can update roster" ON public.schedule_employees;
-DROP POLICY IF EXISTS "Staff can view employee schedule" ON public.employee_schedule;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Staff can view roster" ON public.schedule_employees; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Staff can insert roster" ON public.schedule_employees; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Staff can update roster" ON public.schedule_employees; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Staff can view employee schedule" ON public.employee_schedule; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Internal staff can view roster"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Internal staff can view roster" ON public.schedule_employees; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Internal staff can view roster"
   ON public.schedule_employees FOR SELECT
   TO authenticated
   USING (
@@ -18,9 +19,10 @@ CREATE POLICY "Internal staff can view roster"
       WHERE ur.user_id = auth.uid()
         AND ur.role <> 'customer'
     )
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Internal staff can insert roster"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Internal staff can insert roster" ON public.schedule_employees; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Internal staff can insert roster"
   ON public.schedule_employees FOR INSERT
   TO authenticated
   WITH CHECK (
@@ -35,9 +37,10 @@ CREATE POLICY "Internal staff can insert roster"
       WHERE ur.user_id = auth.uid()
         AND ur.role <> 'customer'
     )
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Internal staff can update roster"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Internal staff can update roster" ON public.schedule_employees; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Internal staff can update roster"
   ON public.schedule_employees FOR UPDATE
   TO authenticated
   USING (
@@ -65,9 +68,10 @@ CREATE POLICY "Internal staff can update roster"
       WHERE ur.user_id = auth.uid()
         AND ur.role <> 'customer'
     )
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Internal staff can view employee schedule"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Internal staff can view employee schedule" ON public.employee_schedule; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Internal staff can view employee schedule"
   ON public.employee_schedule FOR SELECT
   TO authenticated
   USING (
@@ -82,6 +86,6 @@ CREATE POLICY "Internal staff can view employee schedule"
       WHERE ur.user_id = auth.uid()
         AND ur.role <> 'customer'
     )
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 NOTIFY pgrst, 'reload schema';

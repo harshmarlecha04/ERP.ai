@@ -1,6 +1,6 @@
 -- Fix the remaining security definer view
 DROP VIEW IF EXISTS public.v_material_usage_trends;
-CREATE VIEW public.v_material_usage_trends
+CREATE OR REPLACE VIEW public.v_material_usage_trends
 WITH (security_invoker = true)
 AS
 SELECT 

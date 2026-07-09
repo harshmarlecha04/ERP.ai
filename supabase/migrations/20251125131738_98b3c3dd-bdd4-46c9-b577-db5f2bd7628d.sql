@@ -9,38 +9,42 @@ CREATE TABLE IF NOT EXISTS public.direct_messages (
 );
 
 -- Enable Row Level Security
-ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- RLS Policy: Users can view messages where they are sender OR receiver
-CREATE POLICY "Users can view their own messages"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can view their own messages" ON public.direct_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can view their own messages"
   ON public.direct_messages
   FOR SELECT
   USING (
     auth.uid() = sender_id OR auth.uid() = receiver_id
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policy: Users can insert messages where they are the sender
-CREATE POLICY "Users can send messages"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can send messages" ON public.direct_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can send messages"
   ON public.direct_messages
   FOR INSERT
-  WITH CHECK (auth.uid() = sender_id);
+  WITH CHECK (auth.uid() = sender_id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- RLS Policy: Users can update their received messages (mark as read)
-CREATE POLICY "Users can mark messages as read"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users can mark messages as read" ON public.direct_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users can mark messages as read"
   ON public.direct_messages
   FOR UPDATE
   USING (auth.uid() = receiver_id)
-  WITH CHECK (auth.uid() = receiver_id);
+  WITH CHECK (auth.uid() = receiver_id); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create index for faster lookups
-CREATE INDEX idx_direct_messages_sender ON public.direct_messages(sender_id);
-CREATE INDEX idx_direct_messages_receiver ON public.direct_messages(receiver_id);
-CREATE INDEX idx_direct_messages_created_at ON public.direct_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_sender ON public.direct_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_receiver ON public.direct_messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_created_at ON public.direct_messages(created_at DESC);
 
 -- Add to realtime publication for live updates
 ALTER PUBLICATION supabase_realtime ADD TABLE public.direct_messages;
 
 -- Function to sync profile data from auth.users metadata
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='sync_profile_from_auth' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.sync_profile_from_auth()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -63,6 +67,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Trigger to auto-sync profiles when auth.users is updated
+DROP TRIGGER IF EXISTS on_auth_user_created_sync_profile ON auth.users;
 DROP TRIGGER IF EXISTS on_auth_user_created_sync_profile ON auth.users;
 CREATE TRIGGER on_auth_user_created_sync_profile
   AFTER INSERT OR UPDATE ON auth.users

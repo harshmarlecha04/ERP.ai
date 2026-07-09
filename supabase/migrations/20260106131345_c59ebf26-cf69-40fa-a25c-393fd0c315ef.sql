@@ -13,15 +13,17 @@ CREATE TABLE IF NOT EXISTS public.customers_access_audit (
 );
 
 -- Enable RLS on audit table - only admins can view audit logs
-ALTER TABLE public.customers_access_audit ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.customers_access_audit ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE POLICY "Only admins can view customer access audit"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can view customer access audit" ON public.customers_access_audit; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can view customer access audit"
 ON public.customers_access_audit
 FOR SELECT
 TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
+USING (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create function to log customer data modifications
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='log_customer_modification' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.log_customer_modification()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -61,6 +63,7 @@ END;
 $$;
 
 -- Create trigger for customer modifications
+DROP TRIGGER IF EXISTS customers_modification_audit ON public.customers;
 DROP TRIGGER IF EXISTS customers_modification_audit ON public.customers;
 CREATE TRIGGER customers_modification_audit
 AFTER INSERT OR UPDATE OR DELETE ON public.customers

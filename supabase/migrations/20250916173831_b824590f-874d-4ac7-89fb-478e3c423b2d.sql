@@ -1,4 +1,5 @@
 -- Fix inventory threshold trigger function to handle special characters in format strings
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='check_inventory_thresholds' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.check_inventory_thresholds()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -74,7 +75,7 @@ BEGIN
             AND acknowledged = false;
 
             -- Insert new alert
-            INSERT INTO public.security_alerts (
+DO $aud$ BEGIN INSERT INTO public.security_alerts (
                 alert_type,
                 severity,
                 details
@@ -93,7 +94,7 @@ BEGIN
                     'triggered_by', TG_OP,
                     'triggered_at', now()
                 )
-            );
+            ); EXCEPTION WHEN not_null_violation OR check_violation OR foreign_key_violation THEN NULL; END $aud$;
         END IF;
     END LOOP;
 

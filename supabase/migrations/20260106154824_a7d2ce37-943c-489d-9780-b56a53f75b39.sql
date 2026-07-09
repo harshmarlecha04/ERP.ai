@@ -1,6 +1,7 @@
 -- Create has_financial_access() function with admin override
 -- Admin role always has full access to all modules including financial data
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='has_financial_access' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.has_financial_access()
 RETURNS boolean
 LANGUAGE plpgsql

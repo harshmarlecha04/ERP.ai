@@ -1,5 +1,5 @@
 -- Create purchase_orders table
-CREATE TABLE public.purchase_orders (
+CREATE TABLE IF NOT EXISTS public.purchase_orders (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   vendor_id UUID REFERENCES public.suppliers(id),
   ingredient_id UUID REFERENCES public.raw_materials(id),
@@ -17,22 +17,24 @@ CREATE TABLE public.purchase_orders (
 );
 
 -- Enable RLS
-ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
 -- Create RLS policies
-CREATE POLICY "Authenticated users can manage purchase orders" 
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Authenticated users can manage purchase orders" ON public.purchase_orders; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Authenticated users can manage purchase orders" 
 ON public.purchase_orders 
 FOR ALL 
 USING (auth.uid() IS NOT NULL)
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (auth.uid() IS NOT NULL); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Create index for performance
-CREATE INDEX idx_purchase_orders_vendor_id ON public.purchase_orders(vendor_id);
-CREATE INDEX idx_purchase_orders_ingredient_id ON public.purchase_orders(ingredient_id);
-CREATE INDEX idx_purchase_orders_status ON public.purchase_orders(status);
-CREATE INDEX idx_purchase_orders_ordered_date ON public.purchase_orders(ordered_date);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_vendor_id ON public.purchase_orders(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_ingredient_id ON public.purchase_orders(ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_status ON public.purchase_orders(status);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_ordered_date ON public.purchase_orders(ordered_date);
 
 -- Create trigger for automatic timestamp updates
+DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON public.purchase_orders;
 CREATE TRIGGER update_purchase_orders_updated_at
 BEFORE UPDATE ON public.purchase_orders
 FOR EACH ROW

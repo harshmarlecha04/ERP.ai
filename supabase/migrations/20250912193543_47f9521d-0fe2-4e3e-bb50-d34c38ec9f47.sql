@@ -1,4 +1,5 @@
 -- Update deduct_inventory_for_batch function to include ingredient name in error messages
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='deduct_inventory_for_batch' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.deduct_inventory_for_batch(p_schedule_item_id uuid, p_formula_code text, p_formula_name text, p_batch_count integer, p_total_produced_qty numeric)
  RETURNS jsonb
  LANGUAGE plpgsql

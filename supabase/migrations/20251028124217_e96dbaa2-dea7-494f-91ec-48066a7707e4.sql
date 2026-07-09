@@ -2,8 +2,8 @@
 DROP VIEW IF EXISTS v_packaging_balances;
 
 -- Rename column from packable_bottles to bottles_per_unit
-ALTER TABLE packaging_item 
-RENAME COLUMN packable_bottles TO bottles_per_unit;
+DO $rn$ BEGIN ALTER TABLE packaging_item 
+RENAME COLUMN packable_bottles TO bottles_per_unit; EXCEPTION WHEN undefined_column OR duplicate_column OR undefined_table THEN NULL; END $rn$;
 
 -- Set default value
 ALTER TABLE packaging_item 
@@ -19,7 +19,7 @@ SET bottles_per_unit = 1
 WHERE bottles_per_unit = 0 OR bottles_per_unit IS NULL;
 
 -- Recreate the view with calculation
-CREATE VIEW v_packaging_balances AS
+CREATE OR REPLACE VIEW v_packaging_balances AS
 SELECT 
   pi.id AS item_id,
   pi.category,

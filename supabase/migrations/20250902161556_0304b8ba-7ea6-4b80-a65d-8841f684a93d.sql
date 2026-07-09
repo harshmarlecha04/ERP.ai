@@ -1,12 +1,13 @@
 -- Update formulas table to use granular, per-formula permissions
 
 -- Drop the broad role-based access policy
-DROP POLICY IF EXISTS "Only authorized personnel can view formulas" ON public.formulas;
-DROP POLICY IF EXISTS "Only R&D and admin can create formulas" ON public.formulas;
-DROP POLICY IF EXISTS "Only R&D and admin can update formulas" ON public.formulas;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only authorized personnel can view formulas" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only R&D and admin can create formulas" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only R&D and admin can update formulas" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Implement granular access control - users only see formulas they're explicitly granted access to
-CREATE POLICY "Granular formula access control"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Granular formula access control" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Granular formula access control"
 ON public.formulas
 FOR SELECT
 TO authenticated
@@ -23,17 +24,19 @@ USING (
       AND (fup.expires_at IS NULL OR fup.expires_at > now())
     )
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Only admins can create new formulas (they can then grant specific access)
-CREATE POLICY "Only admins can create formulas"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Only admins can create formulas" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Only admins can create formulas"
 ON public.formulas
 FOR INSERT
 TO authenticated
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role)); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Users can only update formulas they have explicit permission for
-CREATE POLICY "Granular formula update control"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Granular formula update control" ON public.formulas; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Granular formula update control"
 ON public.formulas
 FOR UPDATE
 TO authenticated
@@ -58,4 +61,4 @@ WITH CHECK (
     AND fup.is_active = true
     AND (fup.expires_at IS NULL OR fup.expires_at > now())
   )
-);
+); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

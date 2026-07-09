@@ -6,6 +6,7 @@ DROP VIEW IF EXISTS public.inventory_lots_view;
 
 -- Create a security invoker function instead of a view
 -- This will use the caller's permissions, not the definer's
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_inventory_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_inventory_lots()
 RETURNS TABLE(
   id uuid,

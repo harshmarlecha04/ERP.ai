@@ -3,7 +3,7 @@
 ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'customer';
 
 -- 2. customer_users link table
-CREATE TABLE public.customer_users (
+CREATE TABLE IF NOT EXISTS public.customer_users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   customer_id uuid NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
@@ -15,10 +15,11 @@ CREATE TABLE public.customer_users (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, customer_id)
 );
-CREATE INDEX idx_customer_users_user ON public.customer_users(user_id);
-CREATE INDEX idx_customer_users_customer ON public.customer_users(customer_id);
-ALTER TABLE public.customer_users ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_customer_users_user ON public.customer_users(user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_users_customer ON public.customer_users(customer_id);
+DO $rls$ BEGIN ALTER TABLE public.customer_users ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='get_my_customer_id' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.get_my_customer_id()
 RETURNS uuid
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
@@ -29,11 +30,11 @@ AS $$
   LIMIT 1
 $$;
 
-CREATE TABLE public.customer_invitations (
+CREATE TABLE IF NOT EXISTS public.customer_invitations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id uuid NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
   email text NOT NULL,
-  token text NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  token text NOT NULL UNIQUE DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   role_at_company text NOT NULL DEFAULT 'member' CHECK (role_at_company IN ('owner','member')),
   invited_by uuid REFERENCES auth.users(id),
   invited_at timestamptz NOT NULL DEFAULT now(),
@@ -41,11 +42,11 @@ CREATE TABLE public.customer_invitations (
   accepted_at timestamptz,
   accepted_by uuid REFERENCES auth.users(id)
 );
-CREATE INDEX idx_customer_invitations_email ON public.customer_invitations(lower(email));
-CREATE INDEX idx_customer_invitations_token ON public.customer_invitations(token);
-ALTER TABLE public.customer_invitations ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_customer_invitations_email ON public.customer_invitations(lower(email));
+CREATE INDEX IF NOT EXISTS idx_customer_invitations_token ON public.customer_invitations(token);
+DO $rls$ BEGIN ALTER TABLE public.customer_invitations ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE TABLE public.customer_onboarding (
+CREATE TABLE IF NOT EXISTS public.customer_onboarding (
   customer_id uuid PRIMARY KEY REFERENCES public.customers(id) ON DELETE CASCADE,
   current_step text NOT NULL DEFAULT 'company_info'
     CHECK (current_step IN ('company_info','contacts','compliance_docs','payment_terms','signed_agreement','submitted','complete')),
@@ -68,9 +69,9 @@ CREATE TABLE public.customer_onboarding (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE public.customer_onboarding ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE public.customer_onboarding ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
-CREATE TABLE public.customer_documents (
+CREATE TABLE IF NOT EXISTS public.customer_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id uuid NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
   kind text NOT NULL CHECK (kind IN ('coa','formula_pdf','invoice','agreement','other')),
@@ -82,9 +83,10 @@ CREATE TABLE public.customer_documents (
   uploaded_by uuid REFERENCES auth.users(id),
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_customer_documents_customer ON public.customer_documents(customer_id);
-ALTER TABLE public.customer_documents ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_customer_documents_customer ON public.customer_documents(customer_id);
+DO $rls$ BEGIN ALTER TABLE public.customer_documents ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN wrong_object_type OR feature_not_supported THEN NULL; END $rls$;
 
+DROP TRIGGER IF EXISTS trg_customer_onboarding_updated ON public.customer_onboarding;
 CREATE TRIGGER trg_customer_onboarding_updated
   BEFORE UPDATE ON public.customer_onboarding
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -95,43 +97,51 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============ RLS POLICIES ============
 
-CREATE POLICY "Users see their own customer links"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Users see their own customer links" ON public.customer_users; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Users see their own customer links"
   ON public.customer_users FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+  USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Admins manage customer links"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins manage customer links" ON public.customer_users; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins manage customer links"
   ON public.customer_users FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  WITH CHECK (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Admins manage invitations"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Admins manage invitations" ON public.customer_invitations; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Admins manage invitations"
   ON public.customer_invitations FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  WITH CHECK (public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers view own onboarding"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers view own onboarding" ON public.customer_onboarding; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers view own onboarding"
   ON public.customer_onboarding FOR SELECT TO authenticated
-  USING (customer_id = public.get_my_customer_id() OR public.has_role(auth.uid(), 'admin'));
+  USING (customer_id = public.get_my_customer_id() OR public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers update own onboarding before approval"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers update own onboarding before approval" ON public.customer_onboarding; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers update own onboarding before approval"
   ON public.customer_onboarding FOR UPDATE TO authenticated
   USING ((customer_id = public.get_my_customer_id() AND approved_at IS NULL) OR public.has_role(auth.uid(), 'admin'))
-  WITH CHECK ((customer_id = public.get_my_customer_id() AND approved_at IS NULL) OR public.has_role(auth.uid(), 'admin'));
+  WITH CHECK ((customer_id = public.get_my_customer_id() AND approved_at IS NULL) OR public.has_role(auth.uid(), 'admin')); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Insert onboarding"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Insert onboarding" ON public.customer_onboarding; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Insert onboarding"
   ON public.customer_onboarding FOR INSERT TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'admin') OR customer_id = public.get_my_customer_id());
+  WITH CHECK (public.has_role(auth.uid(), 'admin') OR customer_id = public.get_my_customer_id()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers view own visible documents"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers view own visible documents" ON public.customer_documents; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers view own visible documents"
   ON public.customer_documents FOR SELECT TO authenticated
   USING (
     (customer_id = public.get_my_customer_id() AND visible_to_customer = true)
     OR public.has_role(auth.uid(), 'admin')
     OR public.has_role(auth.uid(), 'production_manager')
     OR public.has_role(auth.uid(), 'quality_manager')
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Staff manage customer documents"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Staff manage customer documents" ON public.customer_documents; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Staff manage customer documents"
   ON public.customer_documents FOR ALL TO authenticated
   USING (
     public.has_role(auth.uid(), 'admin')
@@ -142,55 +152,63 @@ CREATE POLICY "Staff manage customer documents"
     public.has_role(auth.uid(), 'admin')
     OR public.has_role(auth.uid(), 'production_manager')
     OR public.has_role(auth.uid(), 'quality_manager')
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Customer access on existing tables (additive policies)
-CREATE POLICY "Customers view own order headers"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers view own order headers" ON public.order_headers; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers view own order headers"
   ON public.order_headers FOR SELECT TO authenticated
-  USING (customer_id = public.get_my_customer_id());
+  USING (customer_id = public.get_my_customer_id()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers view own order line items"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers view own order line items" ON public.order_line_items; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers view own order line items"
   ON public.order_line_items FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.order_headers oh
     WHERE oh.id = order_line_items.order_id
       AND oh.customer_id = public.get_my_customer_id()
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers view own shipments"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers view own shipments" ON public.order_shipments; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers view own shipments"
   ON public.order_shipments FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.order_headers oh
     WHERE oh.id = order_shipments.order_id
       AND oh.customer_id = public.get_my_customer_id()
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers view own shipment lines"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers view own shipment lines" ON public.order_shipment_lines; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers view own shipment lines"
   ON public.order_shipment_lines FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.order_shipments os
     JOIN public.order_headers oh ON oh.id = os.order_id
     WHERE os.id = order_shipment_lines.shipment_id
       AND oh.customer_id = public.get_my_customer_id()
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers view own delivery milestones"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers view own delivery milestones" ON public.order_delivery_milestones; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers view own delivery milestones"
   ON public.order_delivery_milestones FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.order_headers oh
     WHERE oh.id = order_delivery_milestones.order_id
       AND oh.customer_id = public.get_my_customer_id()
-  ));
+  )); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers read their own messages"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers read their own messages" ON public.direct_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers read their own messages"
   ON public.direct_messages FOR SELECT TO authenticated
-  USING (sender_id = auth.uid() OR receiver_id = auth.uid());
+  USING (sender_id = auth.uid() OR receiver_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers send messages as themselves"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers send messages as themselves" ON public.direct_messages; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers send messages as themselves"
   ON public.direct_messages FOR INSERT TO authenticated
-  WITH CHECK (sender_id = auth.uid());
+  WITH CHECK (sender_id = auth.uid()); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
 -- Invitation acceptance RPC
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='accept_customer_invitation' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.accept_customer_invitation(_token text)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
@@ -239,7 +257,8 @@ END;
 $$;
 
 -- Storage policies
-CREATE POLICY "Customers read their own portal files"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers read their own portal files" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers read their own portal files"
   ON storage.objects FOR SELECT TO authenticated
   USING (
     bucket_id = 'customer-portal'
@@ -249,9 +268,10 @@ CREATE POLICY "Customers read their own portal files"
       OR public.has_role(auth.uid(), 'production_manager')
       OR public.has_role(auth.uid(), 'quality_manager')
     )
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Customers upload to their folder"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Customers upload to their folder" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Customers upload to their folder"
   ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (
     bucket_id = 'customer-portal'
@@ -261,9 +281,10 @@ CREATE POLICY "Customers upload to their folder"
       OR public.has_role(auth.uid(), 'production_manager')
       OR public.has_role(auth.uid(), 'quality_manager')
     )
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
 
-CREATE POLICY "Staff manage portal files"
+DO $pol$ BEGIN DROP POLICY IF EXISTS "Staff manage portal files" ON storage.objects; EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;
+DO $pol$ BEGIN CREATE POLICY "Staff manage portal files"
   ON storage.objects FOR ALL TO authenticated
   USING (
     bucket_id = 'customer-portal'
@@ -280,4 +301,4 @@ CREATE POLICY "Staff manage portal files"
       OR public.has_role(auth.uid(), 'production_manager')
       OR public.has_role(auth.uid(), 'quality_manager')
     )
-  );
+  ); EXCEPTION WHEN wrong_object_type OR undefined_object OR undefined_table THEN NULL; END $pol$;

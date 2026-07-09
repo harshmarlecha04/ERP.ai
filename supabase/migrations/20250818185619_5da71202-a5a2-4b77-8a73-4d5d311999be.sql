@@ -3,11 +3,13 @@ ALTER TABLE public.raw_material_lots
 DROP CONSTRAINT IF EXISTS raw_material_lots_raw_material_id_lot_number_key;
 
 -- Add new unique constraint that includes receiving_date to allow same lot_number with different receiving_date
+ALTER TABLE public.raw_material_lots DROP CONSTRAINT IF EXISTS raw_material_lots_raw_material_id_lot_number_receiving_date_key;
 ALTER TABLE public.raw_material_lots 
 ADD CONSTRAINT raw_material_lots_raw_material_id_lot_number_receiving_date_key 
 UNIQUE (raw_material_id, lot_number, receiving_date);
 
 -- Update the upsert function to handle the new uniqueness constraint
+DO $df$ DECLARE r record; BEGIN FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE proname='upsert_raw_material_with_lots' AND pronamespace='public'::regnamespace LOOP EXECUTE 'DROP FUNCTION ' || r.sig; END LOOP; EXCEPTION WHEN dependent_objects_still_exist THEN NULL; END $df$;
 CREATE OR REPLACE FUNCTION public.upsert_raw_material_with_lots(p_material jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
