@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
   esbuild: {
     drop: mode === 'production' ? ['console', 'debugger'] : [],
   },
-  cacheDir: '.vite-cache-bust',
+  cacheDir: 'node_modules/.vite',
   plugins: [
     react(),
   ],
