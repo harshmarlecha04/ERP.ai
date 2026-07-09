@@ -1,3 +1,4 @@
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import React, { useState, useEffect } from "react";
 import { BarChart3, Package, Calendar, Shield, Wrench, DollarSign, User, FileText, LogOut, ShoppingCart, Users, UserCog, Activity, Archive, ClipboardList, TrendingUp, ClipboardCheck, Clipboard, MessageSquare, Beaker, ChevronRight, Calculator, Receipt, Sparkles, Lock, FolderKanban, CheckSquare, Bot, ScanText, ArrowLeftRight, FolderArchive, FolderOpen, Rocket, KanbanSquare, GanttChart, Table as TableIcon, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -180,6 +181,9 @@ const menuGroups = [
 
 
 export function AppSidebar() {
+  const { settings: companySettings } = useCompanySettings();
+  const companyName = companySettings?.company_name || "ERP.ai";
+
   const { state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
@@ -330,13 +334,13 @@ export function AppSidebar() {
               </TooltipTrigger>
               {isCollapsed && (
                 <TooltipContent side="right">
-                  <p>ERP.ai Manufacturing ERP</p>
+                  <p>{companyName} — Manufacturing ERP</p>
                 </TooltipContent>
               )}
             </Tooltip>
             {!isCollapsed && (
               <div>
-                <h1 className="font-bold text-lg">ERP.ai</h1>
+                <h1 className="font-bold text-lg">{companyName}</h1>
                 <p className="text-xs text-muted-foreground">Manufacturing ERP</p>
               </div>
             )}

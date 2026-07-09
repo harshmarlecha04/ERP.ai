@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from "@/components/layout/Layout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
@@ -10,6 +11,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 
 // Lazy-loaded pages
 const Auth = lazy(() => import("@/pages/Auth"));
+const CompanyOnboarding = lazy(() => import("@/pages/CompanyOnboarding"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const PurchaseOrders = lazy(() => import("@/pages/PurchaseOrders"));
@@ -109,16 +111,27 @@ const LegacyProjectRedirect = () => {
 
 
 
+/** Redirects to first-run company setup until it has been completed. */
+const CompanySetupGate = ({ children }: { children: React.ReactNode }) => {
+  const { settings, loading } = useCompanySettings();
+  if (!loading && !settings?.setup_complete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return <>{children}</>;
+};
+
 /** Layout route wrapper for all protected pages */
 const ProtectedLayout = () => (
   <ProtectedRoute>
-    <Layout>
-      <ErrorBoundary>
-        <Suspense fallback={<PageLoader />}>
-          <Outlet />
-        </Suspense>
-      </ErrorBoundary>
-    </Layout>
+    <CompanySetupGate>
+      <Layout>
+        <ErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
+      </Layout>
+    </CompanySetupGate>
   </ProtectedRoute>
 );
 
@@ -127,6 +140,13 @@ const CompanyRoutes = () => (
   <Routes>
     {/* Public routes */}
     <Route path="/auth" element={<Auth />} />
+    <Route path="/onboarding" element={
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <CompanyOnboarding />
+        </Suspense>
+      </ProtectedRoute>
+    } />
     <Route path="/submit-inquiry" element={<SubmitInquiry />} />
     <Route path="/portal/auth" element={<PortalAuth />} />
     <Route path="/portal/reset-password" element={<PortalResetPassword />} />
