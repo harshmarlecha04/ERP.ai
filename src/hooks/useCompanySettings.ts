@@ -13,7 +13,7 @@ export interface CompanySettings {
 }
 
 export function useCompanySettings() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const qc = useQueryClient();
 
   const query = useQuery({
@@ -32,7 +32,8 @@ export function useCompanySettings() {
 
   return {
     settings: query.data ?? null,
-    loading: query.isLoading,
+    // Still "loading" while auth bootstraps (query is disabled then) or while fetching.
+    loading: authLoading || (!!user && query.isPending),
     refresh: () => qc.invalidateQueries({ queryKey: ['company-settings'] }),
   };
 }

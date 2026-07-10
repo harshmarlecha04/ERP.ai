@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,7 +13,7 @@ import { Factory, Loader2 } from 'lucide-react';
 
 export default function CompanyOnboarding() {
   const { user } = useAuth();
-  const { refresh } = useCompanySettings();
+  const { settings, refresh, loading: settingsLoading } = useCompanySettings();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -43,6 +44,10 @@ export default function CompanyOnboarding() {
     toast({ title: 'Welcome to ERP.ai!', description: `${form.company_name} is ready to go.` });
     navigate('/', { replace: true });
   };
+
+  if (!settingsLoading && settings?.setup_complete) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
