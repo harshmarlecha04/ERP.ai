@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
   },
   // Remove console.log and debugger statements in production builds
   esbuild: {
-    drop: mode === 'production' ? ['console', 'debugger'] : [],
+    drop: mode === 'production' ? ['debugger'] : [],
   },
   cacheDir: 'node_modules/.vite',
   plugins: [

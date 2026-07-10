@@ -58,6 +58,12 @@ export class ErrorBoundary extends Component<Props, State> {
                   <CardDescription>
                     An error occurred while loading this section
                   </CardDescription>
+            {this.state.error && (
+              <pre className="mt-2 text-xs text-left whitespace-pre-wrap break-all bg-muted rounded p-2 max-h-40 overflow-auto">
+                {String(this.state.error?.message || this.state.error)}
+                {this.state.error?.stack ? "\n" + this.state.error.stack.split("\n").slice(1, 4).join("\n") : ""}
+              </pre>
+            )}
                 </div>
               </div>
             </CardHeader>
