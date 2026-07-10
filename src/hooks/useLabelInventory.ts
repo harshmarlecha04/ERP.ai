@@ -39,7 +39,7 @@ export const useLabelInventory = (filters?: LabelInventoryFilters) => {
   // Set up real-time subscription
   useEffect(() => {
     const channel = supabase
-      .channel('label-inventory-changes')
+      .channel(`label-inventory-changes-${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         {

@@ -257,7 +257,7 @@ export const useCompletedBatches = () => {
     
     // Debounced realtime subscription
     const channel = supabase
-      .channel('completed-batches-changes')
+      .channel(`completed-batches-changes-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'completed_batch_deductions' },
         () => debouncedFetch()

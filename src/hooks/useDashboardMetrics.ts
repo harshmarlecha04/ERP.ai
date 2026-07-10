@@ -320,7 +320,7 @@ export function useDashboardMetrics() {
   // Real-time subscriptions
   useEffect(() => {
     const productionChannel = supabase
-      .channel('dashboard-production-changes')
+      .channel(`dashboard-production-changes-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'production_schedule_items' }, () => {
         queryClient.invalidateQueries({ queryKey: ['dashboard-weekly-batches'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard-production-schedule'] });

@@ -204,7 +204,7 @@ export const useQualityData = () => {
 
     // All 4 table subscriptions use debounced fetch
     const channel = supabase
-      .channel('quality-production-sync')
+      .channel(`quality-production-sync-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'production_schedule_items' }, () => debouncedFetch())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'production_schedules' }, () => debouncedFetch())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'batch_records' }, () => debouncedFetch())

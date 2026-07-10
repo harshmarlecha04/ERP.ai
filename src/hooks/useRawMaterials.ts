@@ -545,7 +545,7 @@ export function useRawMaterials() {
 
     // Subscribe to raw materials changes
     const materialsChannel = supabase
-      .channel('raw-materials-changes')
+      .channel(`raw-materials-changes-${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         {

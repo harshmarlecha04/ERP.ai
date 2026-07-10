@@ -78,7 +78,7 @@ export function useRawMaterialsOptimized(filters?: { isArchived?: boolean }) {
     };
 
     const channel = supabase
-      .channel('rm-realtime-optimized')
+      .channel(`rm-realtime-optimized-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, handleRealtimeEvent)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_material_lots' }, handleRealtimeEvent)
       .subscribe();

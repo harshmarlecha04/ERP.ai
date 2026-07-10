@@ -252,7 +252,7 @@ export const usePurchaseOrders = () => {
 
     // Set up real-time subscription for purchase orders
     const channel = supabase
-      .channel('purchase-orders-changes')
+      .channel(`purchase-orders-changes-${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         {

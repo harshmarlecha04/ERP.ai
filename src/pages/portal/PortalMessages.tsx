@@ -45,7 +45,7 @@ export default function PortalMessages() {
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
-      .channel('portal-messages')
+      .channel(`portal-messages-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, () => {
         qc.invalidateQueries({ queryKey: ['portal', 'messages', user.id] });
       })
