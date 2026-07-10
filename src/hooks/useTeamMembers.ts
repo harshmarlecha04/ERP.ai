@@ -13,14 +13,21 @@ export const useTeamMembers = () => {
   return useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, display_name, job_title, avatar_url')
-        .ilike('email', '%@pharmvista.com')
-        .order('display_name');
-
-      if (error) throw error;
-      return data as TeamMember[];
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, email, display_name, job_title, avatar_url')
+          .order('display_name'),
+        supabase.from('user_roles').select('user_id, role'),
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+      const staffIds = new Set(
+        (rolesRes.data || [])
+          .filter((r: any) => r.role && r.role !== 'customer')
+          .map((r: any) => r.user_id)
+      );
+      return ((profilesRes.data || []) as TeamMember[]).filter((p) => staffIds.has(p.id));
     },
   });
 };

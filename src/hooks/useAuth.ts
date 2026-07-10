@@ -40,28 +40,6 @@ export const useAuth = () => {
     });
     if (error) return { error };
 
-    // Server-side belt: only @pharmvista.com may use the employee portal.
-    // Customers (non-pharmvista) must sign in at /portal/auth.
-    try {
-      const signedInEmail = data.user?.email?.toLowerCase() ?? '';
-      const isPharmvista = signedInEmail.endsWith('@pharmvista.com');
-      const onEmployeeRoute =
-        typeof window !== 'undefined' &&
-        !window.location.pathname.startsWith('/portal');
-
-      if (!isPharmvista && onEmployeeRoute) {
-        await supabase.auth.signOut();
-        return {
-          error: {
-            name: 'AuthApiError',
-            message:
-              'This account is not authorized for the employee portal. Please use the Customer Portal login.',
-          } as any,
-        };
-      }
-    } catch {
-      // fall through
-    }
     return { error: null as any };
   };
 

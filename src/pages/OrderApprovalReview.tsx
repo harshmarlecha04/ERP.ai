@@ -100,7 +100,7 @@ export default function OrderApprovalReview() {
           <Link to={`/orders/${id}`}><ArrowLeft className="h-4 w-4 mr-2" />Back</Link>
         </Button>
         <Card><CardContent className="p-6 text-sm">
-          Only PO approvers can review this order. Approver list: {PO_APPROVER_EMAILS.join(', ')}.
+          Only admins and designated PO approvers can review this order.
         </CardContent></Card>
       </div>
     );

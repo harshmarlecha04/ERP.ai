@@ -86,13 +86,13 @@ const Auth = () => {
   }, [isSignUp, isPasswordReset]);
 
   const validateEmail = (email: string) => {
-    const emailRegex = /^[A-Za-z0-9._%+-]+@pharmvista\.com$/i;
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
     return emailRegex.test(email);
   };
 
   const handleEmailBlur = () => {
     if (email && !validateEmail(email)) {
-      setEmailError('Only pharmvista.com email addresses are allowed.');
+      setEmailError('Please enter a valid email address.');
     } else {
       setEmailError('');
     }
@@ -105,7 +105,7 @@ const Auth = () => {
     setEmailError('');
 
     if (!validateEmail(email)) {
-      setEmailError('Only pharmvista.com email addresses are allowed for the employee portal.');
+      setEmailError('Please enter a valid email address.');
       setIsLoading(false);
       return;
     }
@@ -132,7 +132,7 @@ const Auth = () => {
 
     // Validate email domain
     if (!validateEmail(email)) {
-      setEmailError('Only pharmvista.com email addresses are allowed.');
+      setEmailError('Please enter a valid email address.');
       setIsLoading(false);
       return;
     }
@@ -567,7 +567,7 @@ const Auth = () => {
               onChange={(e) => setEmail(e.target.value)}
               onBlur={handleEmailBlur}
               required
-              placeholder={isSignUp ? "name@pharmvista.com" : "Enter your email"}
+              placeholder={isSignUp ? "name@yourcompany.com" : "Enter your email"}
               className="bg-white border-gray-300 focus:border-black focus:ring-black"
             />
             {emailError && (
