@@ -95,6 +95,8 @@ export interface CoaPdfData {
 }
 
 
+import { getCompanyInfo } from '@/lib/companyInfo';
+
 const MAROON: [number, number, number] = [144, 38, 47]; // #90262F
 const LIGHT_BLUE: [number, number, number] = [220, 230, 241]; // #DCE6F1
 const BLACK: [number, number, number] = [0, 0, 0];
@@ -127,9 +129,11 @@ function drawHeader(doc: jsPDF, logoData: string, qfRevision: string) {
   doc.setTextColor(...BLACK);
   doc.text(qfRevision, pageWidth - 36, 48, { align: 'right' });
 
-  // Address line
+  // Address line (from company settings)
+  const _ci = getCompanyInfo();
+  const _addr = [_ci.name, _ci.address, _ci.phone].filter(Boolean).join('    ');
   doc.setFontSize(10);
-  doc.text(ADDRESS_LINE, 36, 82);
+  doc.text(_addr || _ci.name, 36, 82);
   // www in blue underline (visual cue, not real link)
   const before = 'ERP.ai Manufacturing    ';
   const beforeWidth = doc.getTextWidth(before);

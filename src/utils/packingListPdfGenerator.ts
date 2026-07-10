@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import logoUrl from "@/assets/pharmvista-logo.png";
+import { getCompanyInfo } from "@/lib/companyInfo";
 
 export const PL_ROW_LABELS = [
   "Products:",
@@ -78,9 +79,9 @@ export interface PackingListInput {
   fileName?: string;
 }
 
-const COMPANY_ADDRESS = "";
-const COMPANY_URL = "";
-const COMPANY_PHONE = "Phone: (973) 287-4306";
+
+
+
 
 const loadLogo = async (): Promise<string> => {
   const res = await fetch(logoUrl);
@@ -105,20 +106,20 @@ export const generatePackingListPdf = async (input: PackingListInput, autoDownlo
     doc.setFont("helvetica", "bold");
     doc.setFontSize(24);
     doc.setTextColor(200, 30, 30);
-    doc.text("ERP.ai", marginX, 65);
+    doc.text(getCompanyInfo().name, marginX, 65);
     doc.setTextColor(0, 0, 0);
   }
 
-  // Address line under logo
+  // Address line under logo (from company settings)
+  const _ci = getCompanyInfo();
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(0, 0, 0);
-  doc.text(COMPANY_ADDRESS, marginX, 100);
-  doc.setTextColor(0, 0, 200);
-  doc.text(COMPANY_URL, marginX + 260, 100);
-  doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "bold");
-  doc.text(COMPANY_PHONE, pageWidth - marginX, 100, { align: "right" });
+  if (_ci.address) doc.text(_ci.address, marginX, 100);
+  if (_ci.phone) {
+    doc.setFont("helvetica", "bold");
+    doc.text(_ci.phone, pageWidth - marginX, 100, { align: "right" });
+  }
 
   // Date + PO
   const topY = 140;

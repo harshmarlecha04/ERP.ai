@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { setCompanyInfo } from '@/lib/companyInfo';
 
 export interface CompanySettings {
   id: number;
@@ -29,6 +30,16 @@ export function useCompanySettings() {
       return data as unknown as CompanySettings | null;
     },
   });
+
+  // Keep the app-wide company info store in sync for non-React consumers (PDFs, etc.)
+  if (query.data) {
+    setCompanyInfo({
+      name: query.data.company_name,
+      address: query.data.address ?? '',
+      phone: query.data.phone ?? '',
+      logoUrl: query.data.logo_url ?? null,
+    });
+  }
 
   return {
     settings: query.data ?? null,

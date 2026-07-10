@@ -1,6 +1,6 @@
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import React, { useState, useEffect } from "react";
-import { BarChart3, Package, Calendar, Shield, Wrench, DollarSign, User, FileText, LogOut, ShoppingCart, Users, UserCog, Activity, Archive, ClipboardList, TrendingUp, ClipboardCheck, Clipboard, MessageSquare, Beaker, ChevronRight, Calculator, Receipt, Sparkles, Lock, FolderKanban, CheckSquare, Bot, ScanText, ArrowLeftRight, FolderArchive, FolderOpen, Rocket, KanbanSquare, GanttChart, Table as TableIcon, Truck } from "lucide-react";
+import { BarChart3, Package, Calendar, Shield, Wrench, DollarSign, User, FileText, LogOut, ShoppingCart, Users, UserCog, Activity, Archive, ClipboardList, TrendingUp, ClipboardCheck, Clipboard, MessageSquare, Beaker, ChevronRight, Calculator, Receipt, Sparkles, Lock, FolderKanban, CheckSquare, Bot, ScanText, ArrowLeftRight, FolderArchive, FolderOpen, Rocket, KanbanSquare, GanttChart, Table as TableIcon, Truck, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -127,6 +127,7 @@ const menuGroups = [
   {
     title: "Admin", icon: Wrench, type: "group",
     items: [
+      { title: "Company Settings", url: "/company-settings", icon: Building2 },
       { title: "Users", url: "/users", icon: UserCog, adminOnly: true },
       { title: "Activity Tracker", url: "/activity-tracker", icon: Activity, adminOnly: true },
       { title: "Office Supplies", url: "/office-supplies", icon: Clipboard },

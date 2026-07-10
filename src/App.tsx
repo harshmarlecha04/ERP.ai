@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 // Lazy-loaded pages
 const Auth = lazy(() => import("@/pages/Auth"));
 const CompanyOnboarding = lazy(() => import("@/pages/CompanyOnboarding"));
+const CompanySettings = lazy(() => import("@/pages/CompanySettings"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const PurchaseOrders = lazy(() => import("@/pages/PurchaseOrders"));
@@ -191,6 +192,7 @@ const CompanyRoutes = () => (
       <Route path="/supplier" element={<Vendor />} />
       <Route path="/maintenance" element={<Maintenance />} />
       <Route path="/users" element={<Users />} />
+      <Route path="/company-settings" element={<CompanySettings />} />
       <Route path="/activity-tracker" element={<ActivityTracker />} />
       <Route path="/material-requirements" element={<MaterialRequirements />} />
       <Route path="/profitability" element={<Profitability />} />
