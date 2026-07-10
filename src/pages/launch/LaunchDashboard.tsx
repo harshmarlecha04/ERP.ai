@@ -116,7 +116,7 @@ export default function LaunchDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Pharmvista Project Tracker</h1>
+        <h1 className="text-2xl font-bold">Project Tracker</h1>
         <p className="text-sm text-muted-foreground">
           Capsules, Softgels, and Gummies — launch progress overview.
         </p>

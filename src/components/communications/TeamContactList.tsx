@@ -54,7 +54,7 @@ export const TeamContactList = ({ selectedUserId, onSelectUser }: TeamContactLis
       <div className="p-4 border-b border-border">
         <h1 className="text-2xl font-bold">Team Chat</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Connect with your colleagues at PharmVista
+          Connect with your colleagues
         </p>
       </div>
 

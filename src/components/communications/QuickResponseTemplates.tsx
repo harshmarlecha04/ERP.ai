@@ -5,6 +5,7 @@ import { useCreateInquiryMessage } from "@/hooks/useInquiryMessages";
 import { useUpdateInquiry } from "@/hooks/useInquiries";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { CheckCircle2, MessageSquare, Package, Clock } from "lucide-react";
 
 interface QuickResponseTemplatesProps {
@@ -17,7 +18,7 @@ const templates = [
     id: "order_received",
     title: "Order Received",
     icon: CheckCircle2,
-    message: (inquiry: any) => `Hi ${inquiry.customer_name},
+    message: (inquiry: any, companyName: string) => `Hi ${inquiry.customer_name},
 
 Thank you for your order inquiry! We have received your request and are currently reviewing the details.
 
@@ -29,14 +30,14 @@ Our team will get back to you within 24 hours with:
 If you have any urgent questions, please don't hesitate to reach out.
 
 Best regards,
-PharmVista Team`,
+${companyName} Team`,
     updateStatus: "in_review",
   },
   {
     id: "order_confirmed",
     title: "Order Confirmed",
     icon: Package,
-    message: (inquiry: any) => `Hi ${inquiry.customer_name},
+    message: (inquiry: any, companyName: string) => `Hi ${inquiry.customer_name},
 
 Great news! We're pleased to confirm your order.
 
@@ -50,14 +51,14 @@ We'll keep you updated on the progress and notify you when your order ships.
 Thank you for your business!
 
 Best regards,
-PharmVista Team`,
+${companyName} Team`,
     updateStatus: "responded",
   },
   {
     id: "in_production",
     title: "In Production",
     icon: Clock,
-    message: (inquiry: any) => `Hi ${inquiry.customer_name},
+    message: (inquiry: any, companyName: string) => `Hi ${inquiry.customer_name},
 
 We wanted to update you that your order is now in production!
 
@@ -69,14 +70,14 @@ Current Status:
 We'll notify you as soon as production is complete and ready for shipment.
 
 Best regards,
-PharmVista Team`,
+${companyName} Team`,
     updateStatus: "responded",
   },
   {
     id: "general_response",
     title: "General Response",
     icon: MessageSquare,
-    message: (inquiry: any) => `Hi ${inquiry.customer_name},
+    message: (inquiry: any, companyName: string) => `Hi ${inquiry.customer_name},
 
 Thank you for reaching out! We have received your inquiry regarding: "${inquiry.subject}"
 
@@ -85,12 +86,14 @@ Thank you for reaching out! We have received your inquiry regarding: "${inquiry.
 Please let us know if you have any additional questions.
 
 Best regards,
-PharmVista Team`,
+${companyName} Team`,
     updateStatus: "responded",
   },
 ];
 
 export function QuickResponseTemplates({ inquiryId, inquiry }: QuickResponseTemplatesProps) {
+  const { settings } = useCompanySettings();
+  const companyName = settings?.company_name || "Our";
   const [sendingTemplate, setSendingTemplate] = useState<string | null>(null);
   const createMessage = useCreateInquiryMessage();
   const updateInquiry = useUpdateInquiry();
@@ -113,7 +116,7 @@ export function QuickResponseTemplates({ inquiryId, inquiry }: QuickResponseTemp
       // Send the message
       await createMessage.mutateAsync({
         inquiry_id: inquiryId,
-        message: template.message(inquiry),
+        message: template.message(inquiry, companyName),
         sender_type: 'staff',
         sender_name: displayName,
         is_internal_note: false,
@@ -168,7 +171,7 @@ export function QuickResponseTemplates({ inquiryId, inquiry }: QuickResponseTemp
               <CardContent>
                 <div className="mb-4 p-3 bg-muted rounded-lg">
                   <pre className="text-sm whitespace-pre-wrap font-sans">
-                    {template.message(inquiry)}
+                    {template.message(inquiry, companyName)}
                   </pre>
                 </div>
                 <Button

@@ -1,7 +1,7 @@
 {
-  "name": "PharmVista",
-  "short_name": "PharmVista",
-  "description": "PharmVista Manufacturing ERP",
+  "name": "ERP.ai",
+  "short_name": "ERP.ai",
+  "description": "ERP.ai Manufacturing ERP System",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

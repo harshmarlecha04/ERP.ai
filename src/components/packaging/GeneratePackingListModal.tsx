@@ -25,7 +25,7 @@ interface Props {
 
 const DEFAULT_STORAGE = "Store in a cool dry place away from direct sunlight.";
 const DEFAULT_SHIPPING_METHOD =
-  "Customer arranges pickup from: Pharmvista Gummy LLC\n17 West Street East Hanover, NJ 07936\nHours: M - F, 8 am – 3 pm, No pickup appointment needed.\nContact: Jayson Esquilin   Tel: (973) 264-6804";
+  "Customer arranges pickup. Enter your pickup address, hours, and contact here.";
 const DEFAULT_SHIPPER_DIM = "10x8x5";
 const DEFAULT_UNITS_PER_SHIPPER = "12 bottles per shipper";
 const DEFAULT_PALLET_DIM = '48x40x60"';

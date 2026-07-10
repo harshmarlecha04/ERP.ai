@@ -254,28 +254,28 @@ const Auth = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-black" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white text-black flex items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-slate-900 flex items-center justify-center p-4 relative">
       <a
         href="/portal/auth"
-        className="absolute top-4 right-4 text-sm text-gray-600 hover:text-black underline underline-offset-4"
+        className="absolute top-4 right-4 text-sm text-slate-500 hover:text-indigo-600 font-medium transition-colors"
       >
         Customer Portal Login →
       </a>
-      <div className="w-full max-w-[420px] p-7 bg-white rounded-2xl shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
+      <div className="w-full max-w-[440px] p-8 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl ring-1 ring-slate-200">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">ERP</span>
+          <div className="flex items-center justify-center gap-2.5 mb-4">
+            <div className="w-11 h-11 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <span className="text-white font-bold text-base tracking-tight">ai</span>
             </div>
-            <h1 className="text-xl font-bold">ERP.ai</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">ERP.ai</h1>
           </div>
           <h2 className="text-2xl font-bold mb-1">
             {isForceChange
@@ -295,8 +295,8 @@ const Auth = () => {
               : isForgotPassword
                 ? 'Enter your email to receive a reset link'
                 : isSignUp
-                  ? 'Join the production management system'
-                  : 'Access your production dashboard'
+                  ? 'Modern ERP for manufacturers'
+                  : 'Sign in to your workspace'
             }
           </p>
         </div>

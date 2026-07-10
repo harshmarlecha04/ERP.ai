@@ -40,143 +40,100 @@ import {
 
 // Menu structure following manufacturing workflow
 const menuGroups = [
-  // 1. Dashboard - Overview
+  { title: "Dashboard", url: "/dashboard", icon: BarChart3, type: "single" },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare, type: "single" },
+  { title: "Assistant", url: "/assistant", icon: Sparkles, type: "single" },
+
+  // Sales & customers
   {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: BarChart3,
-    type: "single"
+    title: "Sales", icon: Users, type: "group",
+    items: [
+      { title: "Order Management", url: "/order-management", icon: ClipboardCheck },
+      { title: "Customer Orders", url: "/orders", icon: ClipboardCheck },
+      { title: "Customers", url: "/customers", icon: Users },
+      { title: "Inquiries", url: "/inquiries", icon: MessageSquare },
+      { title: "Quoting", url: "/quoting", icon: Calculator, requiresFinancialAccess: true },
+      { title: "Customer Invoicing", url: "/invoicing", icon: Receipt },
+    ]
   },
-  // 2. Tasks - Personal & team to-dos
+
+  // Materials & purchasing
   {
-    title: "Tasks",
-    url: "/tasks",
-    icon: CheckSquare,
-    type: "single"
-  },
-  // 3. Order Management - Receive Customer POs
-  {
-    title: "Order Management",
-    url: "/mvp-v1",
-    icon: ClipboardCheck,
-    type: "single"
-  },
-  // 3. Material Check - Check what's needed
-  {
-    title: "Material Check",
-    icon: Package,
-    type: "group",
+    title: "Materials", icon: Package, type: "group",
     items: [
       { title: "Material Requirements", url: "/material-requirements", icon: ClipboardList },
       { title: "Inventory", url: "/inventory", icon: Package },
-      { title: "Receive (Scan)", url: "/receive", icon: ScanText }
+      { title: "Receive (Scan)", url: "/receive", icon: ScanText },
+      { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart, requiresFinancialAccess: true },
+      { title: "Vendors", url: "/supplier", icon: User },
+      { title: "Forecasting", url: "/forecasting", icon: TrendingUp },
     ]
   },
-  // 4. Purchasing - Buy shortages
+
+  // Production
   {
-    title: "Purchasing",
-    icon: ShoppingCart,
-    type: "group",
-    requiresFinancialAccess: true,
-    items: [
-      { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
-      { title: "Vendors", url: "/supplier", icon: User }
-    ]
-  },
-  // 5. Production - Schedule & make batches
-  {
-    title: "Production",
-    icon: Calendar,
-    type: "group",
+    title: "Production", icon: Calendar, type: "group",
     items: [
       { title: "Schedule", url: "/production", icon: Calendar },
       { title: "Employee Schedule", url: "/schedule", icon: Users },
-      { title: "Formula", url: "/formula", icon: FileText }
+      { title: "Formula", url: "/formula", icon: FileText },
+      { title: "R&D Projects", url: "/rd-projects", icon: Beaker },
     ]
   },
-  // 6. Quality & Yield - Track output & losses
+
+  // Quality, packaging, shipping
   {
-    title: "Quality & Yield",
-    url: "/quality",
-    icon: Shield,
-    type: "single"
-  },
-  // 6a. Packaging
-  {
-    title: "Packaging",
-    url: "/packaging",
-    icon: Package,
-    type: "single"
-  },
-  // 6b. Shipping
-  {
-    title: "Shipping",
-    url: "/shipping",
-    icon: Truck,
-    type: "single"
-  },
-  // 7. Customer Invoicing - Bill the customer
-  {
-    title: "Customer Invoicing",
-    url: "/invoicing",
-    icon: Receipt,
-    type: "single"
-  },
-  // 8. Customers - Customer management
-  {
-    title: "Customers",
-    icon: Users,
-    type: "group",
+    title: "Fulfillment", icon: Truck, type: "group",
     items: [
-      { title: "Customers", url: "/customers", icon: Users },
-      { title: "Customer Orders", url: "/orders", icon: ClipboardCheck }
+      { title: "Quality & Yield", url: "/quality", icon: Shield },
+      { title: "Packaging", url: "/packaging", icon: Package },
+      { title: "Shipping", url: "/shipping", icon: Truck },
     ]
   },
-  // 9. Other - Misc tools
+
+  // Finance (gated)
   {
-    title: "Other",
-    icon: Wrench,
-    type: "group",
+    title: "Finance", icon: DollarSign, type: "group", requiresFinancialAccess: true,
     items: [
-      { title: "Office Supplies", url: "/office-supplies", icon: Clipboard },
-      { title: "Archived Materials", url: "/archived-materials", icon: Archive }
+      { title: "Production Costs", url: "/production-costs", icon: Calculator, requiresFinancialAccess: true },
+      { title: "Profitability", url: "/profitability", icon: DollarSign, requiresFinancialAccess: true },
     ]
   },
-  // Projects - unified product launch project module
+
+  // Projects
   {
-    title: "Projects",
-    icon: FolderKanban,
-    type: "group",
+    title: "Projects", icon: FolderKanban, type: "group",
     items: [
       { title: "All Projects", url: "/projects", icon: FolderOpen },
-      { title: "Dashboard", url: "/projects/dashboard", icon: BarChart3 },
-      { title: "Tasks", url: "/projects/tasks", icon: KanbanSquare },
-      { title: "Timeline", url: "/projects/timeline", icon: GanttChart }
+      { title: "Project Dashboard", url: "/projects/dashboard", icon: BarChart3 },
+      { title: "Project Tasks", url: "/projects/tasks", icon: KanbanSquare },
+      { title: "Timeline", url: "/projects/timeline", icon: GanttChart },
     ]
   },
-  // 11. Under Development - Features in progress
+
+  // Documents & reports
   {
-    title: "Under Development",
-    icon: Beaker,
-    type: "group",
+    title: "Documents & Reports", icon: FolderArchive, type: "group",
     items: [
       { title: "Documents", url: "/documents", icon: FolderArchive },
       { title: "Reports", url: "/reports", icon: BarChart3 },
-      { title: "Agents", url: "/agents/label-review", icon: Bot },
       { title: "Supplement Facts", url: "/tools/supplement-facts", icon: FileText },
-      { title: "R&D", url: "/rd-projects", icon: Beaker },
+      { title: "Label Review", url: "/agents/label-review", icon: Bot },
       { title: "Communications", url: "/communications", icon: MessageSquare },
-      { title: "Inquiries", url: "/inquiries", icon: MessageSquare },
-      { title: "Forecasting", url: "/forecasting", icon: TrendingUp },
-      { title: "Maintenance", url: "/maintenance", icon: Wrench },
+    ]
+  },
+
+  // Admin & settings
+  {
+    title: "Admin", icon: Wrench, type: "group",
+    items: [
       { title: "Users", url: "/users", icon: UserCog, adminOnly: true },
       { title: "Activity Tracker", url: "/activity-tracker", icon: Activity, adminOnly: true },
-      { title: "Production Costs", url: "/production-costs", icon: Calculator, requiresFinancialAccess: true },
-      { title: "Profitability", url: "/profitability", icon: DollarSign, requiresFinancialAccess: true },
-      { title: "Quoting", url: "/quoting", icon: Calculator, requiresFinancialAccess: true },
-      { title: "Assistant", url: "/assistant", icon: Sparkles }
+      { title: "Office Supplies", url: "/office-supplies", icon: Clipboard },
+      { title: "Maintenance", url: "/maintenance", icon: Wrench },
+      { title: "Archived Materials", url: "/archived-materials", icon: Archive },
     ]
-  }
+  },
 ];
 
 
@@ -328,8 +285,8 @@ export function AppSidebar() {
           <div className="flex items-center gap-2 justify-center">
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                  <span className="text-primary-foreground font-bold text-sm">ERP</span>
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                  <span className="text-white font-bold text-sm tracking-tight">ai</span>
                 </div>
               </TooltipTrigger>
               {isCollapsed && (

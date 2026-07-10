@@ -80,7 +80,7 @@ export function OnboardingTour({ storageKey, version = '1', steps }: Props) {
 }
 
 export const EMPLOYEE_TOUR_STEPS: Step[] = [
-  { icon: Sparkles, title: 'Welcome to PharmVista', body: 'A quick 4-step tour of what is new.' },
+  { icon: Sparkles, title: 'Welcome to ERP.ai', body: 'A quick 4-step tour of what is new.' },
   { icon: Command, title: 'Press ⌘K anytime', body: 'Open the command palette to jump to any order, formula, PO, or page instantly.' },
   { icon: FileText, title: 'Documents & Reports', body: 'A unified Document Hub and natural-language Reports are now in the sidebar.' },
   { icon: Megaphone, title: 'What\'s New', body: 'Click the megaphone in the header to see the changelog whenever a dot appears.' },

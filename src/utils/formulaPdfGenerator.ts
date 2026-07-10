@@ -62,7 +62,7 @@ export const generateFormulaPDF = (formula: FormulaData) => {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  const titleText = 'Pharmvista Manufacturing Formula';
+  const titleText = 'Manufacturing Formula';
   const titleWidth = doc.getTextWidth(titleText);
   doc.text(titleText, (pageWidth - titleWidth) / 2, 14);
   

@@ -197,7 +197,7 @@ const CompanyRoutes = () => (
       <Route path="/orders" element={<Orders />} />
       <Route path="/orders/:id" element={<OrderDetail />} />
       <Route path="/orders/:id/approve" element={<OrderApprovalReview />} />
-      <Route path="/mvp-v1" element={<MVPVersion1 />} />
+      <Route path="/order-management" element={<MVPVersion1 />} />
       <Route path="/receive" element={<ReceiveScan />} />
       <Route path="/customers" element={<CustomersNew />} />
       <Route path="/customers/:customerId" element={<CustomerDetail />} />

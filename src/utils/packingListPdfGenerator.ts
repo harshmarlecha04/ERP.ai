@@ -78,8 +78,8 @@ export interface PackingListInput {
   fileName?: string;
 }
 
-const COMPANY_ADDRESS = "17 West Street, East Hanover, NJ 07936";
-const COMPANY_URL = "www.pharmvista.com";
+const COMPANY_ADDRESS = "";
+const COMPANY_URL = "";
 const COMPANY_PHONE = "Phone: (973) 287-4306";
 
 const loadLogo = async (): Promise<string> => {
@@ -105,7 +105,7 @@ export const generatePackingListPdf = async (input: PackingListInput, autoDownlo
     doc.setFont("helvetica", "bold");
     doc.setFontSize(24);
     doc.setTextColor(200, 30, 30);
-    doc.text("Pharmvista", marginX, 65);
+    doc.text("ERP.ai", marginX, 65);
     doc.setTextColor(0, 0, 0);
   }
 

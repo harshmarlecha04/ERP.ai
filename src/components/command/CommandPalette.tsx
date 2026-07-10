@@ -34,7 +34,7 @@ import { useEntitySearch, EntityHit } from '@/hooks/useEntitySearch';
 const NAV = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Tasks', path: '/tasks', icon: CheckSquare },
-  { label: 'Order Management', path: '/mvp-v1', icon: ClipboardList },
+  { label: 'Order Management', path: '/order-management', icon: ClipboardList },
   { label: 'Customer Orders', path: '/orders', icon: ClipboardList },
   { label: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
   { label: 'Inventory', path: '/inventory', icon: Package },

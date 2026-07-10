@@ -100,7 +100,7 @@ const LIGHT_BLUE: [number, number, number] = [220, 230, 241]; // #DCE6F1
 const BLACK: [number, number, number] = [0, 0, 0];
 
 const ADDRESS_LINE =
-  '17 West Street, East Hanover, New Jersey 07936    www.pharmvista.com    (973) 287-4306';
+  'ERP.ai Manufacturing';
 
 async function loadImageDataUrl(src: string): Promise<string> {
   const resp = await fetch(src);
@@ -131,11 +131,11 @@ function drawHeader(doc: jsPDF, logoData: string, qfRevision: string) {
   doc.setFontSize(10);
   doc.text(ADDRESS_LINE, 36, 82);
   // www in blue underline (visual cue, not real link)
-  const before = '17 West Street, East Hanover, New Jersey 07936    ';
+  const before = 'ERP.ai Manufacturing    ';
   const beforeWidth = doc.getTextWidth(before);
   doc.setTextColor(0, 0, 238);
-  doc.text('www.pharmvista.com', 36 + beforeWidth, 82);
-  const linkW = doc.getTextWidth('www.pharmvista.com');
+  doc.text('', 36 + beforeWidth, 82);
+  const linkW = doc.getTextWidth('');
   doc.setDrawColor(0, 0, 238);
   doc.line(36 + beforeWidth, 84, 36 + beforeWidth + linkW, 84);
   doc.setTextColor(...BLACK);
@@ -404,7 +404,7 @@ export const generateCoaPDF = async (data: CoaPdfData): Promise<Blob> => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
 
-  // Pharmvista QA — signature image if present
+  // QA — signature image if present
   doc.text('Approved by:', margin, sigY);
   if (data.signatureDataUrl) {
     try {
@@ -414,7 +414,7 @@ export const generateCoaPDF = async (data: CoaPdfData): Promise<Blob> => {
     }
   }
   doc.line(margin, sigY + 22, margin + 200, sigY + 22);
-  doc.text('Pharmvista QA', margin, sigY + 36);
+  doc.text('Quality Assurance', margin, sigY + 36);
   if (data.approvalDate) {
     doc.text(`Date: ${data.approvalDate}`, margin, sigY + 52);
   }
