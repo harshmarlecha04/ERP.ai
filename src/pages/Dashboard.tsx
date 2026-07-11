@@ -117,138 +117,8 @@ export default function Dashboard() {
         {/* Welcome Header */}
         <WelcomeHeader />
 
-        {/* Quick Access Shortcuts */}
-
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Quick Access</h2>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Click tiles to navigate. Customize to reorder or hide.</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            
-            {/* Customize Controls */}
-            {isCustomizing ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetToDefaults}
-                  disabled={isSaving}
-                  className="gap-1.5"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Reset
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={cancelCustomizing}
-                  disabled={isSaving}
-                  className="gap-1.5"
-                >
-                  <X className="h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={saveAndExit}
-                  disabled={isSaving}
-                  className="gap-1.5"
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  Save
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={startCustomizing}
-                className="text-muted-foreground hover:text-foreground gap-1.5"
-              >
-                <Settings2 className="h-4 w-4" />
-                Customize
-              </Button>
-            )}
-          </div>
-
-          {/* Customize Mode Hint */}
-          {isCustomizing && (
-            <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
-              <p className="text-sm text-primary">
-                <strong>Customizing:</strong> Drag to reorder • Click the eye icon to show/hide shortcuts
-              </p>
-            </div>
-          )}
-
-          {/* Shortcuts Grid */}
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-[76px] rounded-lg" />
-              ))}
-            </div>
-          ) : shortcuts.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-8">
-                <p className="text-muted-foreground mb-3">No shortcuts visible</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetToDefaults}
-                  className="gap-1.5"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Reset to Defaults
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={shortcuts.map(s => s.key)}
-                strategy={rectSortingStrategy}
-              >
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {shortcuts.map((shortcut) => (
-                    <DraggableShortcutCard
-                      key={shortcut.key}
-                      shortcut={shortcut.config}
-                      isCustomizing={isCustomizing}
-                      isVisible={shortcut.isVisible}
-                      onToggleVisibility={() => toggleVisibility(shortcut.key)}
-                      onClick={() => navigate(shortcut.config.path)}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </section>
-
         {/* Quick Stats Bar */}
         <QuickStatsBar stats={quickStats} />
-
-        {/* AI Operational Insights */}
-        <section>
-          <AIInsightsWidget />
-        </section>
-
 
         {/* Key Metrics with Sparklines */}
         <section>
@@ -353,7 +223,137 @@ export default function Dashboard() {
             />
           </div>
           <TodayTasksWidget />
+        </section>{/* AI Operational Insights */}
+        <section>
+          <AIInsightsWidget />
         </section>
+
+
+        {/* Quick Access Shortcuts */}
+
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Quick Access</h2>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Click tiles to navigate. Customize to reorder or hide.</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            
+            {/* Customize Controls */}
+            {isCustomizing ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetToDefaults}
+                  disabled={isSaving}
+                  className="gap-1.5"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelCustomizing}
+                  disabled={isSaving}
+                  className="gap-1.5"
+                >
+                  <X className="h-4 w-4" />
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={saveAndExit}
+                  disabled={isSaving}
+                  className="gap-1.5"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={startCustomizing}
+                className="text-muted-foreground hover:text-foreground gap-1.5"
+              >
+                <Settings2 className="h-4 w-4" />
+                Customize
+              </Button>
+            )}
+          </div>
+
+          {/* Customize Mode Hint */}
+          {isCustomizing && (
+            <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <p className="text-sm text-primary">
+                <strong>Customizing:</strong> Drag to reorder • Click the eye icon to show/hide shortcuts
+              </p>
+            </div>
+          )}
+
+          {/* Shortcuts Grid */}
+          {loading ? (
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-[76px] rounded-lg" />
+              ))}
+            </div>
+          ) : shortcuts.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <p className="text-muted-foreground mb-3">No shortcuts visible</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetToDefaults}
+                  className="gap-1.5"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset to Defaults
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={shortcuts.map(s => s.key)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {shortcuts.map((shortcut) => (
+                    <DraggableShortcutCard
+                      key={shortcut.key}
+                      shortcut={shortcut.config}
+                      isCustomizing={isCustomizing}
+                      isVisible={shortcut.isVisible}
+                      onToggleVisibility={() => toggleVisibility(shortcut.key)}
+                      onClick={() => navigate(shortcut.config.path)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </section>
+
+        
       </div>
     </TooltipProvider>
   );

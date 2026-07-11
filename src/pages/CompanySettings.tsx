@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2 } from 'lucide-react';
+import { Loader2, Building2, Database, Trash2 } from 'lucide-react';
 
 export default function CompanySettings() {
   const { user } = useAuth();
@@ -17,6 +17,7 @@ export default function CompanySettings() {
   const isAdmin = hasPermission('admin');
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState<'load' | 'clear' | null>(null);
   const [form, setForm] = useState({
     company_name: '', industry: '', address: '', phone: '', logo_url: '',
   });
@@ -56,6 +57,23 @@ export default function CompanySettings() {
     }
     await refresh();
     toast({ title: 'Saved', description: 'Company details updated.' });
+  };
+
+  const runSample = async (mode: 'load' | 'clear') => {
+    setSeeding(mode);
+    const fn = mode === 'load' ? 'load_sample_data' : 'clear_sample_data';
+    const { error } = await supabase.rpc(fn as any);
+    setSeeding(null);
+    if (error) {
+      toast({ title: 'Something went wrong', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({
+      title: mode === 'load' ? 'Sample data loaded' : 'Sample data cleared',
+      description: mode === 'load'
+        ? 'Your dashboard is now populated with example data. Refresh to see it.'
+        : 'All sample data has been removed.',
+    });
   };
 
   if (loading) {
@@ -116,6 +134,28 @@ export default function CompanySettings() {
           </form>
         </CardContent>
       </Card>
+
+      {isAdmin && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Database className="w-4 h-4" /> Sample data</CardTitle>
+            <CardDescription>
+              Populate the app with realistic example data to explore features or run a demo.
+              This is completely reversible and never touches data you enter yourself.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button onClick={() => runSample('load')} disabled={seeding !== null}>
+              {seeding === 'load' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
+              Load sample data
+            </Button>
+            <Button variant="outline" onClick={() => runSample('clear')} disabled={seeding !== null}>
+              {seeding === 'clear' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Clear sample data
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

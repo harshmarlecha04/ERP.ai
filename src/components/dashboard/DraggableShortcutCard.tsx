@@ -69,7 +69,7 @@ export function DraggableShortcutCard({
           !isVisible && isCustomizing && "opacity-40 grayscale"
         )}
       >
-        <CardContent className="p-4 flex items-center gap-3">
+        <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
           {/* Drag Handle - only visible when customizing */}
           {isCustomizing && (
             <div
@@ -83,16 +83,16 @@ export function DraggableShortcutCard({
 
           {/* Icon */}
           <div className={cn(
-            "p-2.5 rounded-xl text-white shadow-sm",
+            "p-2 rounded-lg text-white shadow-sm",
             "transition-transform duration-300 group-hover:scale-110",
             shortcut.color
           )}>
-            <Icon className="h-5 w-5" />
+            <Icon className="h-4 w-4" />
           </div>
 
           {/* Label */}
           <span className={cn(
-            "font-medium text-sm",
+            "font-medium text-xs leading-tight",
             !isVisible && isCustomizing && "line-through text-muted-foreground"
           )}>
             {shortcut.label}
