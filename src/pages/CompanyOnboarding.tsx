@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { INDUSTRIES } from '@/config/industries';
 import { useToast } from '@/hooks/use-toast';
 import { Factory, Loader2 } from 'lucide-react';
 
@@ -70,8 +72,15 @@ export default function CompanyOnboarding() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="industry">Industry</Label>
-              <Input id="industry" value={form.industry} onChange={set('industry')}
-                placeholder="Nutraceuticals, food & beverage, cosmetics…" />
+              <Select value={form.industry} onValueChange={(v) => setForm((f) => ({ ...f, industry: v }))}>
+                <SelectTrigger id="industry"><SelectValue placeholder="Select your industry" /></SelectTrigger>
+                <SelectContent>
+                  {INDUSTRIES.map((ind) => (
+                    <SelectItem key={ind.key} value={ind.key}>{ind.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">This tailors sample data and terminology to your business.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>

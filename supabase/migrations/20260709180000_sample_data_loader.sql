@@ -25,11 +25,36 @@ CREATE OR REPLACE FUNCTION public.load_sample_data() RETURNS text LANGUAGE plpgs
 DECLARE
   uid uuid := auth.uid(); fid uuid; cid uuid; oid uuid; sid uuid; rmid uuid;
   formula_ids uuid[] := '{}'; customer_ids uuid[] := '{}'; i int;
-  names text[] := ARRAY['Vitamin C Gummy','Elderberry Immune','Multivitamin Kids','Melatonin Sleep','Biotin Beauty','Ashwagandha Calm','Omega-3 Chew','Probiotic Daily'];
-  mats text[] := ARRAY['Ascorbic Acid','Elderberry Extract','Pectin','Cane Sugar','Citric Acid','Melatonin','Biotin USP','Natural Flavor','Titanium Dioxide','Gelatin'];
-  custs text[] := ARRAY['Wellness Co','NutriBrand','VitaLabs','PureLife Supplements','Summit Nutrition'];
+  names text[]; mats text[]; custs text[]; ind text;
 BEGIN
   IF NOT has_role(uid,'admin'::app_role) THEN RAISE EXCEPTION 'Only admins can load sample data'; END IF;
+  SELECT industry INTO ind FROM public.company_settings WHERE id = 1;
+  ind := COALESCE(ind, 'general');
+  IF ind = 'chemicals' THEN
+    names := ARRAY['Industrial Solvent A','Epoxy Resin','Cleaning Concentrate','Adhesive Base','Coating Additive','Surfactant Blend','Catalyst X','Polymer Compound'];
+    mats := ARRAY['Acetone','Bisphenol-A','Sodium Hydroxide','Ethylene Glycol','Silica','Titanium Dioxide','Sulfuric Acid','Ammonia','Toluene','Calcium Carbonate'];
+    custs := ARRAY['Industrial Partners','ChemDist Co','Apex Coatings','Meridian Plastics','Delta Solvents'];
+  ELSIF ind = 'cosmetics' THEN
+    names := ARRAY['Hydrating Serum','Vitamin C Cream','Sunscreen SPF30','Lip Balm','Body Lotion','Face Cleanser','Anti-Age Moisturizer','Hair Conditioner'];
+    mats := ARRAY['Hyaluronic Acid','Glycerin','Shea Butter','Tocopherol','Zinc Oxide','Aloe Extract','Coconut Oil','Fragrance','Beeswax','Cetyl Alcohol'];
+    custs := ARRAY['Glow Beauty','PureSkin Labs','Radiance Co','Bloom Cosmetics','Luxe Care'];
+  ELSIF ind = 'food_beverage' THEN
+    names := ARRAY['Protein Bar','Cold Brew Concentrate','Fruit Snack','Energy Drink','Granola Mix','Sauce Base','Seasoning Blend','Sparkling Water'];
+    mats := ARRAY['Cane Sugar','Whey Protein','Cocoa Powder','Natural Flavor','Citric Acid','Sea Salt','Vegetable Oil','Oats','Fruit Puree','Baking Soda'];
+    custs := ARRAY['FreshFoods Co','Grocery Direct','Vitality Beverages','Harvest Brands','Snack Nation'];
+  ELSIF ind = 'pharmaceuticals' THEN
+    names := ARRAY['Pain Relief Tablet','Antihistamine Cap','Antibiotic Suspension','Vitamin D Softgel','Cough Syrup','Antacid Chew','Sleep Aid Tablet','Immune Booster'];
+    mats := ARRAY['Acetaminophen','Microcrystalline Cellulose','Magnesium Stearate','Lactose','Povidone','Croscarmellose','Titanium Dioxide','Gelatin','Sucrose','Purified Water'];
+    custs := ARRAY['MedSupply Inc','PharmaDist','CareChain Pharmacy','Wellness Rx','Health Partners'];
+  ELSIF ind = 'general' THEN
+    names := ARRAY['Product A','Product B','Assembly Kit','Component Set','Finished Unit X','Module Y','Sub-Assembly Z','Widget Pro'];
+    mats := ARRAY['Steel Sheet','Aluminum Rod','Plastic Pellets','Fasteners','Wiring Harness','Rubber Gasket','Paint','Adhesive','Circuit Board','Packaging Film'];
+    custs := ARRAY['Global Distributors','Prime Industrial','Summit Wholesale','Metro Supply','Vertex Trading'];
+  ELSE  -- nutraceuticals / default
+    names := ARRAY['Vitamin C Gummy','Elderberry Immune','Multivitamin Kids','Melatonin Sleep','Biotin Beauty','Ashwagandha Calm','Omega-3 Chew','Probiotic Daily'];
+    mats := ARRAY['Ascorbic Acid','Elderberry Extract','Pectin','Cane Sugar','Citric Acid','Melatonin','Biotin USP','Natural Flavor','Titanium Dioxide','Gelatin'];
+    custs := ARRAY['Wellness Co','NutriBrand','VitaLabs','PureLife Supplements','Summit Nutrition'];
+  END IF;
   PERFORM public.clear_sample_data();
   FOR i IN 1..array_length(names,1) LOOP
     INSERT INTO public.formulas (code,name,gummies_per_batch,default_batch_size_kg,status)
