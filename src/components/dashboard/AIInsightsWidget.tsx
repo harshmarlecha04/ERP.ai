@@ -99,8 +99,12 @@ export function AIInsightsWidget() {
                 <Skeleton className="h-16 w-full" />
               </>
             ) : error ? (
-              <div className="text-sm text-destructive">
-                {(error as any)?.message || "Failed to load insights"}
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <Sparkles className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium">AI insights not connected yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add an AI provider key to enable automatic operational insights and daily summaries.
+                </p>
               </div>
             ) : (
               <>
