@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { INDUSTRIES } from '@/config/industries';
+import { INDUSTRIES, industryByKey } from '@/config/industries';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Building2, Database, Trash2 } from 'lucide-react';
 
@@ -143,6 +144,45 @@ export default function CompanySettings() {
           </form>
         </CardContent>
       </Card>
+
+      {form.industry && (() => {
+        const ind = industryByKey(form.industry);
+        return (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Industry profile — {ind.label}</CardTitle>
+              <CardDescription>{ind.blurb} These defaults tailor sample data and terminology to your industry.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <p className="font-medium mb-2">Production stages</p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {ind.productionStages.map((st, i) => (
+                    <span key={st} className="flex items-center gap-1.5">
+                      <Badge variant="secondary">{st}</Badge>
+                      {i < ind.productionStages.length - 1 && <span className="text-muted-foreground">→</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="font-medium mb-2">Units</p>
+                  <div className="flex flex-wrap gap-1.5">{ind.units.map((u) => <Badge key={u} variant="outline">{u}</Badge>)}</div>
+                </div>
+                <div>
+                  <p className="font-medium mb-2">Material categories</p>
+                  <div className="flex flex-wrap gap-1.5">{ind.materialCategories.map((m) => <Badge key={m} variant="outline">{m}</Badge>)}</div>
+                </div>
+                <div>
+                  <p className="font-medium mb-2">Documents</p>
+                  <div className="flex flex-wrap gap-1.5">{ind.documents.map((d) => <Badge key={d} variant="outline">{d}</Badge>)}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {isAdmin && (
         <Card className="mt-6">
